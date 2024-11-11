@@ -11,7 +11,20 @@ Implementation for "Bayesian Machine Learning 2024" course project titled "Bayes
 
 ## Project Structure
 
-project_name/ ├── data/ # Raw and processed data files ├── notebooks/ # Jupyter notebooks for experiments ├── src/ # Source code for the project │ ├── data_setup/ # Data loading and processing scripts │ ├── models/ # Model architectures │ ├── engine/ # Design one train/validation epoch │ ├── evaluation/ # Evaluation scripts │ ├── train.py # Overall training code ├── scripts/ # Scripts for running jobs (e.g., train.py) ├── tests/ # Unit and integration tests ├── requirements.txt # Python dependencies ├── README.md # Project documentation └── LICENSE # License for the project code
+BCNN-SCP/
+├── data/ # Raw and processed data files
+├── notebooks/ # Jupyter notebooks for experiments
+├── src/ # Source code for the project
+│ ├── data_setup/ # Data loading and processing scripts
+│ ├── models/ # Model architectures
+│ ├── engine/ # Design one train/validation epoch
+│ ├── evaluation/ # Evaluation scripts
+│ └── train.py # Overall training code
+├── scripts/ # Scripts for running jobs
+├── tests/ # Unit and integration tests
+├── requirements.txt # Python dependencies
+├── README.md # Project documentation
+└── LICENSE # License for the project code
 
 ## Setup and Installation
 
