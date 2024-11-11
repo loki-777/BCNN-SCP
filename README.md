@@ -4,10 +4,10 @@ Implementation for "Bayesian Machine Learning 2024" course project titled "Bayes
 
 ## Table of Contents
 
-- [Project Structure](#project-structure)
-- [Setup and Installation](#setup-and-installation)
-- [Usage](#usage)
-- [License](#license)
+-   [Project Structure](#project-structure)
+-   [Setup and Installation](#setup-and-installation)
+-   [Usage](#usage)
+-   [License](#license)
 
 ## Project Structure
 
@@ -28,4 +28,6 @@ BCNN-SCP/
 
 ## Setup and Installation
 
+```bash
 pip install -r requirements.txt
+```
