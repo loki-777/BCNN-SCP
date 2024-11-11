@@ -1,0 +1,31 @@
+# Core dependencies
+torch>=2.0.0                # PyTorch for building and training models
+torchvision>=0.15.0         # PyTorch's computer vision package
+monai>=1.2.0                # Medical Open Network for AI (for medical imaging tasks)
+lightning>=2.0.0            # Lightning for simplified training loop management
+
+# Experiment tracking and logging
+wandb>=0.15.0               # Weights & Biases for experiment tracking
+
+# Data handling and processing
+numpy>=1.21.0               # For numerical operations
+pandas>=1.3.0               # For data manipulation and analysis
+opencv-python>=4.5.3        # For image processing (OpenCV)
+
+# Visualization
+matplotlib>=3.4.3           # For plotting and visualizations
+seaborn>=0.11.2             # Optional: for enhanced visualizations
+Pillow>=8.2.0               # For image handling (PIL)
+
+# Utilities
+scikit-learn>=0.24.2        # For data splitting, metrics, and preprocessing
+tqdm>=4.62.0                # For progress bars
+
+# Additional experiment tracking (optional)
+tensorboard>=2.6.0          # For tracking training progress
+
+# Environment management and safety
+rich>=12.0.0                # Optional: for pretty-printing in terminal/logging
+
+# Linting (optional)
+flake8>=3.9.0               # For code style checks
