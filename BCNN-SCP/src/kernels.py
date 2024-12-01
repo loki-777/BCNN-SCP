@@ -1,10 +1,10 @@
-from abc import ABC, abstractmethod
-
 import torch
 
 
-class SpatialCovariance(ABC):
-    def __call__(self, xs, ys):
+class SpatialCovariance:
+    def __call__(self, w, h):
+        xs = torch.linspace(0, 1, w)
+        ys = torch.linspace(0, 1, h)
         points = torch.cartesian_prod(xs, ys)
         covar = torch.zeros(len(points), len(points))
         for i in range(len(points)):
@@ -15,7 +15,6 @@ class SpatialCovariance(ABC):
                 covar[j, i] = covar[i, j]
         return covar
 
-    @abstractmethod
     def kernel(self, p1, p2):
         raise NotImplementedError
 
