@@ -1,4 +1,5 @@
 # Core dependencies
+--find-links https://download.pytorch.org/whl/torch_stable.html
 torch>=2.0.0                # PyTorch for building and training models
 torchvision>=0.15.0         # PyTorch's computer vision package
 monai>=1.2.0                # Medical Open Network for AI (for medical imaging tasks)
