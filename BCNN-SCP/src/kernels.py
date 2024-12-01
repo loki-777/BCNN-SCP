@@ -9,14 +9,14 @@ class SpatialCovariance(ABC):
         covar = torch.zeros(len(points), len(points))
         for i in range(len(points)):
             for j in range(i, len(points)):
-                x = points[i]
-                y = points[j]
-                covar[i, j] = self.kernel(x, y)
+                p1 = points[i]
+                p2 = points[j]
+                covar[i, j] = self.kernel(p1, p2)
                 covar[j, i] = covar[i, j]
         return covar
 
     @abstractmethod
-    def kernel(self, x, y):
+    def kernel(self, p1, p2):
         raise NotImplementedError
 
 
@@ -25,8 +25,8 @@ class RBFCovariance(SpatialCovariance):
         self.a = a
         self.l = l
 
-    def kernel(self, x, y):
-        dist = torch.linalg.vector_norm(x - y)
+    def kernel(self, p1, p2):
+        dist = torch.linalg.vector_norm(p1 - p2)
         return self.a * torch.exp(-(dist**2) / (2 * self.l**2))
 
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     for a, l in [(1, 1), (1, 2), (2, 1)]:
         rbf = RBFCovariance(a, l)
         plt.plot(xs, [rbf.kernel(x, 0.0) for x in xs], label=f"RBF(a={a}, l={l})")
-    plt.xlabel("|x - y|")
+    plt.xlabel("$p_1 - p_2$")
     plt.legend()
     plt.show()
 
@@ -47,5 +47,9 @@ if __name__ == "__main__":
     xs = torch.tensor([0.0, 1.0, 2.0])
     ys = torch.tensor([0.0, 1.0, 2.0])
     covar = rbf(xs, ys)
-    plt.imshow(covar)
-    plt.show()
+    covar_p1 = covar[0, :].reshape(len(xs), len(ys))
+    plt.imshow(covar_p1)
+    plt.xticks(range(len(xs)), range(1, len(xs) + 1))
+    plt.yticks(range(len(ys)), range(1, len(ys) + 1))
+    plt.colorbar()
+    plt.savefig("covariance_example.pdf")
