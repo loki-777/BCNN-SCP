@@ -8,16 +8,18 @@ class SpatialCovariance:
         ys = torch.linspace(0, 1, h)
         xs = torch.linspace(0, 1, w)
         points = torch.cartesian_prod(ys, xs)
-        covar = torch.zeros(len(points), len(points))
-        for i in range(len(points)):
-            for j in range(i, len(points)):
-                p1 = points[i]
-                p2 = points[j]
-                covar[i, j] = self.kernel(p1, p2)
-                covar[j, i] = covar[i, j]
+
+        squared_norms = torch.sum(points**2, dim=1)
+        dists = torch.sqrt(
+            squared_norms.unsqueeze(-1)
+            - 2 * torch.matmul(points, points.T)
+            + squared_norms.unsqueeze(0)
+        )
+
+        covar = self.kernel(dists)
         return covar
 
-    def kernel(self, p1, p2):
+    def kernel(self, dists):
         raise NotImplementedError
 
 
@@ -26,9 +28,8 @@ class RBFCovariance(SpatialCovariance):
         self.a = a
         self.l = l
 
-    def kernel(self, p1, p2):
-        diff = torch.norm(p1 - p2)
-        return self.a * torch.exp(-(diff**2) / (2 * self.l**2))
+    def kernel(self, dists):
+        return self.a**2 * torch.exp(-(dists**2) / (2 * self.l**2))
 
 
 class MaternCovariance(SpatialCovariance):
@@ -37,13 +38,12 @@ class MaternCovariance(SpatialCovariance):
         self.l = l
         self.nu = nu
 
-    def kernel(self, p1, p2):
-        diff = torch.linalg.vector_norm(p1 - p2)
+    def kernel(self, dists):
         return (
             self.a**2
             * (2 ** (1 - self.nu) / gamma(self.nu))
-            * ((2 * self.nu) ** (1 / 2) * diff / self.l) ** self.nu
-            * kv(self.nu, diff / self.l)
+            * ((2 * self.nu) ** (1 / 2) * dists / self.l) ** self.nu
+            * kv(self.nu, dists / self.l)
         )
 
 
@@ -53,9 +53,10 @@ class RationalQuadraticCovariance(SpatialCovariance):
         self.l = l
         self.alpha = alpha
 
-    def kernel(self, p1, p2):
-        diff = torch.linalg.vector_norm(p1 - p2)
-        return self.a**2 * (1 + diff**2 / (2 * self.alpha * self.l**2)) ** (-self.alpha)
+    def kernel(self, dists):
+        return self.a**2 * (1 + dists**2 / (2 * self.alpha * self.l**2)) ** (
+            -self.alpha
+        )
 
 
 if __name__ == "__main__":
@@ -71,13 +72,10 @@ if __name__ == "__main__":
     plt.close()
 
     # Visualize RBF kernel
-    ps = torch.linspace(-5, 5, 100)
+    dists = torch.linspace(-5, 5, 100)
     for a, l in [(1, 1), (1, 2), (2, 1)]:
-        plt.plot(
-            ps,
-            [RBFCovariance(a, l).kernel(p, 0.0) for p in ps],
-            label=f"RBF$(a={a}, l={l})$",
-        )
+        covars = RBFCovariance(a, l).kernel(dists.abs())
+        plt.plot(dists, covars, label=f"RBF$(a={a}, l={l})$")
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
     plt.title("RBF Kernel")
@@ -85,13 +83,10 @@ if __name__ == "__main__":
     plt.close()
 
     # Visualize Matern kernel
-    ps = torch.linspace(-5, 5, 100)
+    dists = torch.linspace(-5, 5, 100)
     for a, l, nu in [(1, 1, 1.5), (1, 2, 1.5), (2, 1, 1.5), (1, 1, 2.5)]:
-        plt.plot(
-            ps,
-            [MaternCovariance(a, l, nu).kernel(p, 0.0) for p in ps],
-            label=f"Matérn$(a={a}, l={l}, \\nu={nu})$",
-        )
+        covars = MaternCovariance(a, l, nu).kernel(dists.abs())
+        plt.plot(dists, covars, label=f"Matérn$(a={a}, l={l}, \\nu={nu})$")
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
     plt.title("Matérn Kernel")
@@ -99,13 +94,10 @@ if __name__ == "__main__":
     plt.close()
 
     # Visualize Rational Quadratic kernel
-    ps = torch.linspace(-5, 5, 100)
+    dists = torch.linspace(-5, 5, 100)
     for a, l, alpha in [(1, 1, 1), (1, 2, 1), (2, 1, 1), (1, 1, 2)]:
-        plt.plot(
-            ps,
-            [RationalQuadraticCovariance(a, l, alpha).kernel(p, 0.0) for p in ps],
-            label=f"RQ$(a={a}, l={l}, \\alpha={alpha})$",
-        )
+        covars = RationalQuadraticCovariance(a, l, alpha).kernel(dists.abs())
+        plt.plot(dists, covars, label=f"RQ$(a={a}, l={l}, \\alpha={alpha})$")
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
     plt.title("Rational Quadratic Kernel")
