@@ -4,7 +4,7 @@ from scipy.special import gamma, kv
 
 
 class SpatialCovariance:
-    def __call__(self, h, w):
+    def __call__(self, h, w, device=None):
         ys = torch.linspace(0, 1, h)
         xs = torch.linspace(0, 1, w)
         points = torch.cartesian_prod(ys, xs)
@@ -15,6 +15,9 @@ class SpatialCovariance:
             - 2 * torch.matmul(points, points.T)
             + squared_norms.unsqueeze(0)
         )
+
+        if device is not None:
+            dists = dists.to(device)
 
         covar = self.kernel(dists)
         return covar
@@ -29,8 +32,6 @@ class RBFCovariance(SpatialCovariance):
         self.l = l
 
     def kernel(self, dists):
-        if isinstance(self.a, torch.Tensor):
-            dists = dists.to(self.a.device)
         return self.a**2 * torch.exp(-(dists**2) / (2 * self.l**2))
 
 

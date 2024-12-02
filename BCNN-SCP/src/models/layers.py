@@ -103,7 +103,7 @@ class BBBConv2d(pl.LightningModule):
             elif (self.kernel == "RQC"):
                 posterior_kernel = RationalQuadraticCovariance(self.a[i], self.l[i], self.alpha[i])
 
-            filterwise_covariance_matrix = posterior_kernel(self.filter_shape[0], self.filter_shape[1])
+            filterwise_covariance_matrix = posterior_kernel(self.filter_shape[0], self.filter_shape[1], device=self.device)
             jitter = 1e-6 * torch.eye(filterwise_covariance_matrix.size(0), device=filterwise_covariance_matrix.device)
             filterwise_covariance_matrix += jitter
 
