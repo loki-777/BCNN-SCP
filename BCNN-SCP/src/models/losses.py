@@ -12,7 +12,7 @@ def KL_DIV(mu_p, sig_p, mu_q, sig_q):
         A =  sig_q_logdet - sig_p_logdet
         B = torch.trace(sig_p_inv @ sig_q[i,:,:])
         C = (mu_q[mu_dim*i:mu_dim*(i+1)] - mu_p[mu_dim*i:mu_dim*(i+1)])
-        loss = (A + n - B - (C).T @ sig_p_inv @ (C))
+        loss = (A + n - B - (C) @ sig_p_inv @ (C))
         kl += loss
 
     return -0.5*kl

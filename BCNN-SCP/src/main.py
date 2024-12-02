@@ -21,13 +21,13 @@ class LightningModule(pl.LightningModule):
         self.save_hyperparameters()
         self.config = config
         self.model = get_model(config)
-        self.loss_module = nn.CrossEntropyLoss()
 
         # metrics
-        self.accuracy = Accuracy(num_classes=config["data"]["num_classes"])
-        self.precision = Precision(num_classes=config["data"]["num_classes"], average='macro')
-        self.recall = Recall(num_classes=config["data"]["num_classes"], average='macro')
-        self.f1 = F1Score(num_classes=config["data"]["num_classes"], average='macro')
+        self.accuracy_metric = Accuracy(num_classes=config["data"]["num_classes"])
+        self.precision_metric = Precision(num_classes=config["data"]["num_classes"], average='macro')
+        self.recall_metric = Recall(num_classes=config["data"]["num_classes"], average='macro')
+        self.f1_metric = F1Score(num_classes=config["data"]["num_classes"], average='macro')
+        self.loss_module = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, imgs):
         return self.model(imgs)
@@ -41,8 +41,8 @@ class LightningModule(pl.LightningModule):
             assert False, f'Unknown optimizer: "{self.config["training"]["optimizer"]}"'
 
         # We will reduce the learning rate by 0.1 after 100 and 150 epochs
-        scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 40], gamma=self.config["training"]["gamma"])
-        return [optimizer], [scheduler]
+        # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 40], gamma=self.config["training"]["scheduler"]["gamma"])
+        return [optimizer], []
 
     def training_step(self, batch, batch_idx):
         # "batch" is the output of the training data loader.
@@ -55,11 +55,11 @@ class LightningModule(pl.LightningModule):
             logits = logits.permute(0, 2, 1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes, num_samples)
             labels = labels.unsqueeze(-1) # (batch_size, ) -> (batch_size, 1)
             labels = labels.expand(-1, logits.shape[-1]) # (batch_size, 1) -> (batch_size, num_samples)
-            criterion_loss = self.loss_module(logits, labels, reduction='none') # (batch_size, num_samples)
+            criterion_loss = self.loss_module(logits, labels) # (batch_size, num_samples)
             criterion_loss = criterion_loss.mean(-1) # average over samples
             criterion_loss = criterion_loss.sum() # sum over minibatch
         else:
-            criterion_loss = self.loss_module(logits, labels, reduction='sum')
+            criterion_loss = self.loss_module(logits, labels).sum()
         
         combined_loss = criterion_loss
         if kl_loss:
@@ -70,29 +70,29 @@ class LightningModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         imgs, labels = batch
-        preds = self.model(imgs).squeeze().argmax(dim=-1)
+        preds = self.model(imgs)["logits"].squeeze().argmax(dim=-1)
 
         if "accuracy" in self.config["validation"]["metrics"]:
-            self.log("val_accuracy", self.accuracy(preds, labels))
+            self.log("val_accuracy", self.accuracy_metric(preds, labels))
         if "precision" in self.config["validation"]["metrics"]:
-            self.log("val_precision", self.precision(preds, labels))
+            self.log("val_precision", self.precision_metric(preds, labels))
         if "recall" in self.config["validation"]["metrics"]:
-            self.log("val_recall", self.recall(preds, labels))
+            self.log("val_recall", self.recall_metric(preds, labels))
         if "f1" in self.config["validation"]["metrics"]:
-            self.log("val_f1", self.f1(preds, labels))
+            self.log("val_f1", self.f1_metric(preds, labels))
 
     def test_step(self, batch, batch_idx):
         imgs, labels = batch
-        preds = self.model(imgs).squeeze().argmax(dim=-1)
+        preds = self.model(imgs)["logits"].squeeze().argmax(dim=-1)
         
         if "accuracy" in self.config["validation"]["metrics"]:
-            self.log("val_accuracy", self.accuracy(preds, labels))
+            self.log("val_accuracy", self.accuracy_metric(preds, labels))
         if "precision" in self.config["validation"]["metrics"]:
-            self.log("val_precision", self.precision(preds, labels))
+            self.log("val_precision", self.precision_metric(preds, labels))
         if "recall" in self.config["validation"]["metrics"]:
-            self.log("val_recall", self.recall(preds, labels))
+            self.log("val_recall", self.recall_metric(preds, labels))
         if "f1" in self.config["validation"]["metrics"]:
-            self.log("val_f1", self.f1(preds, labels))
+            self.log("val_f1", self.f1_metric(preds, labels))
 
 if __name__ == "__main__":
 
@@ -126,8 +126,8 @@ if __name__ == "__main__":
     trainer = pl.Trainer(
         default_root_dir=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),  # Where to save models
         # We run on a single GPU (if possible)
-        accelerator="auto",
-        devices=num_gpus,
+        accelerator="cpu",
+        # devices=num_gpus,
         # How many epochs to train for if no patience is set
         max_epochs=config["training"]["epochs"],
         callbacks=[
@@ -139,4 +139,5 @@ if __name__ == "__main__":
     )
 
     model = LightningModule(config)
+    print(model)
     trainer.fit(model, train_loader, val_loader)
