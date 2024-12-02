@@ -4,13 +4,14 @@ Implementation for "Bayesian Machine Learning 2024" course project titled "Bayes
 
 ## Table of Contents
 
--   [Project Structure](#project-structure)
--   [Setup and Installation](#setup-and-installation)
--   [Usage](#usage)
--   [License](#license)
+- [Project Structure](#project-structure)
+- [Setup and Installation](#setup-and-installation)
+- [Usage](#usage)
+- [License](#license)
 
 ## Project Structure
 
+```bash
 BCNN-SCP/
 ├── data/ # Raw and processed data files
 ├── notebooks/ # Jupyter notebooks for experiments
@@ -25,6 +26,7 @@ BCNN-SCP/
 ├── requirements.txt # Python dependencies
 ├── README.md # Project documentation
 └── LICENSE # License for the project code
+```
 
 ## Setup and Installation
 
