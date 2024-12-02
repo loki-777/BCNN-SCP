@@ -46,8 +46,8 @@ class BBBConv2d(pl.LightningModule):
             raise NotImplementedError
 
         if priors is None:
-            prior_mu = torch.zeros(self.filter_size*in_channels*out_channels, device=self.device)
-            prior_covariance_matrix = prior_kernel(self.filter_shape[0], self.filter_shape[1]).to(self.device)
+            prior_mu = torch.zeros(self.filter_size*in_channels*out_channels)
+            prior_covariance_matrix = prior_kernel(self.filter_shape[0], self.filter_shape[1])
             priors = {
                 'prior_mu': prior_mu,
                 'prior_cov': prior_covariance_matrix
@@ -86,6 +86,10 @@ class BBBConv2d(pl.LightningModule):
             return F.conv2d(input[:,0,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups)
 
     def kl_loss(self):
+        device = self.W_mu.device
+        self.prior_mu = self.prior_mu.to(device)
+        self.prior_cov_inv = self.prior_cov_inv.to(device)
+        self.prior_cov_logdet = self.prior_cov_logdet.to(device)
         return KL_DIV(self.prior_mu, self.prior_cov_inv, self.prior_cov_logdet, self.W_mu, self.W_cov)
 
     def sample_weights(self):
