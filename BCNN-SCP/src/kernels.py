@@ -4,10 +4,10 @@ from scipy.special import gamma, kv
 
 
 class SpatialCovariance:
-    def __call__(self, w, h):
-        xs = torch.linspace(0, 1, w)
+    def __call__(self, h, w):
         ys = torch.linspace(0, 1, h)
-        points = torch.cartesian_prod(xs, ys)
+        xs = torch.linspace(0, 1, w)
+        points = torch.cartesian_prod(ys, xs)
         covar = torch.zeros(len(points), len(points))
         for i in range(len(points)):
             for j in range(i, len(points)):
@@ -60,21 +60,22 @@ class RationalQuadraticCovariance(SpatialCovariance):
 
 if __name__ == "__main__":
     # Visualize RBF covariance matrix
-    covar = RBFCovariance(a=1, l=1)(w=3, h=3)
-    covar_p1 = covar[0, :].reshape(3, 3)
+    h, w = 3, 3
+    covar = RBFCovariance(a=1, l=1)(h, w)
+    covar_p1 = covar[0, :].reshape(h, w)
     plt.imshow(covar_p1)
-    plt.xticks(range(3))
-    plt.yticks(range(3))
+    plt.yticks(range(h))
+    plt.xticks(range(w))
     plt.colorbar()
     plt.savefig("figures/covariance_example.pdf")
     plt.close()
 
     # Visualize RBF kernel
-    xs = torch.linspace(-5, 5, 100)
+    ps = torch.linspace(-5, 5, 100)
     for a, l in [(1, 1), (1, 2), (2, 1)]:
         plt.plot(
-            xs,
-            [RBFCovariance(a, l).kernel(x, 0.0) for x in xs],
+            ps,
+            [RBFCovariance(a, l).kernel(p, 0.0) for p in ps],
             label=f"RBF$(a={a}, l={l})$",
         )
     plt.xlabel("$p_1 - p_2$")
@@ -84,11 +85,11 @@ if __name__ == "__main__":
     plt.close()
 
     # Visualize Matern kernel
-    xs = torch.linspace(-5, 5, 100)
+    ps = torch.linspace(-5, 5, 100)
     for a, l, nu in [(1, 1, 1.5), (1, 2, 1.5), (2, 1, 1.5), (1, 1, 2.5)]:
         plt.plot(
-            xs,
-            [MaternCovariance(a, l, nu).kernel(x, 0.0) for x in xs],
+            ps,
+            [MaternCovariance(a, l, nu).kernel(p, 0.0) for p in ps],
             label=f"Matérn$(a={a}, l={l}, \\nu={nu})$",
         )
     plt.xlabel("$p_1 - p_2$")
@@ -98,11 +99,11 @@ if __name__ == "__main__":
     plt.close()
 
     # Visualize Rational Quadratic kernel
-    xs = torch.linspace(-5, 5, 100)
+    ps = torch.linspace(-5, 5, 100)
     for a, l, alpha in [(1, 1, 1), (1, 2, 1), (2, 1, 1), (1, 1, 2)]:
         plt.plot(
-            xs,
-            [RationalQuadraticCovariance(a, l, alpha).kernel(x, 0.0) for x in xs],
+            ps,
+            [RationalQuadraticCovariance(a, l, alpha).kernel(p, 0.0) for p in ps],
             label=f"RQ$(a={a}, l={l}, \\alpha={alpha})$",
         )
     plt.xlabel("$p_1 - p_2$")
