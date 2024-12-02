@@ -1,0 +1,46 @@
+# General settings
+
+# for WandB logging
+project_name: ""
+experiment_name: ""
+
+# Data settings
+data:
+  dataset: "MNIST"
+  num_classes: 10
+  batch_size: 32 # Batch size for training/validation
+  num_workers: 4 # Number of data loader workers
+  input_size: [28, 28] # Image dimensions (height, width)
+  normalize_mean: 0.5 # Mean for normalization
+  normalize_std: 0.5 # Standard deviation for normalization
+
+# Model settings
+model:
+  model_name: "BCNN"
+  num_samples: 100
+  kernel: "RBF"
+
+# Training settings
+training:
+  epochs: 50 # Number of training epochs
+  learning_rate: 0.001 # Learning rate
+  weight_decay: 1e-4 # Weight decay (L2 regularization)
+  optimizer: "Adam" # Optimizer (e.g., adam, sgd)
+  scheduler: # Learning rate scheduler settings
+    gamma: 0.1 # Gamma for StepLR
+
+# Validation settings
+validation:
+  metrics: ["accuracy", "f1"] # Validation metrics to log
+
+# Testing settings
+testing:
+  metrics: ["accuracy", "f1"] # Metrics for testing
+
+# Logging settings
+logging:
+  save_name: "BCNN_MNIST"
+  checkpoint_dir: "../checkpoints" # Directory to save model checkpoints
+  save_top_k: 3 # Number of best models to save
+  monitor_metric: "val_accuracy" # Metric to monitor for saving the best model
+  mode: "max" # "max" for maximizing the metric, "min" for minimizing
