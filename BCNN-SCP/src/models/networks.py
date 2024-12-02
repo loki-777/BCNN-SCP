@@ -7,10 +7,10 @@ from src.models.layers import *
 class BCNN(pl.LightningModule):
     def __init__(self, num_samples=1, kernel="RBF"):
         super(BCNN, self).__init__()
-        self.conv1 = BBBConv2d(1, 32, filter_size=3, stride=1, padding=1, num_samples=num_samples, kernel=kernel)
-        self.conv2 = BBBConv2d(32, 64, filter_size=3, stride=1, padding=1, num_samples=num_samples, kernel=kernel)
+        self.conv1 = BBBConv2d(1, 16, filter_size=3, stride=1, padding=1, num_samples=num_samples, kernel=kernel)
+        self.conv2 = BBBConv2d(16, 32, filter_size=3, stride=1, padding=1, num_samples=num_samples, kernel=kernel)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.fc1 = nn.Linear(64 * 14 * 14, 128)
+        self.fc1 = nn.Linear(32 * 14 * 14, 128)
         self.fc2 = nn.Linear(128, 10)
         self.num_samples = num_samples
 

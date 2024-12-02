@@ -60,7 +60,7 @@ class LightningModule(pl.LightningModule):
             criterion_loss = criterion_loss.sum() # sum over minibatch
         else:
             criterion_loss = self.loss_module(logits, labels).sum()
-        
+
         combined_loss = criterion_loss
         if kl_loss:
             combined_loss += kl_loss
@@ -84,7 +84,7 @@ class LightningModule(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         imgs, labels = batch
         preds = self.model(imgs)["logits"].squeeze().argmax(dim=-1)
-        
+
         if "accuracy" in self.config["validation"]["metrics"]:
             self.log("val_accuracy", self.accuracy_metric(preds, labels))
         if "precision" in self.config["validation"]["metrics"]:
@@ -103,24 +103,24 @@ if __name__ == "__main__":
         help="Config file path"
     )
     args = parser.parse_args()
-    
+
     if not os.path.isfile(args.file_path):
         print(f"Error: File '{args.file_path}' does not exist.")
         exit
-    
+
     with open(args.file_path, "r") as file:
         config = yaml.safe_load(file)
-    
+
     num_gpus = 0
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()
         print(f"GPU is available. Number of GPUs: {num_gpus}")
     else:
         print("GPU is not available.")
-    
+
     # prep data
     train_loader, val_loader, test_loader = get_dataloaders(config)
-    
+
     pl.seed_everything(42)
 
     trainer = pl.Trainer(
@@ -132,7 +132,8 @@ if __name__ == "__main__":
         max_epochs=config["training"]["epochs"],
         callbacks=[
             ModelCheckpoint(
-                save_weights_only=True, mode="max", monitor="val_acc"
+                dirpath=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),
+                save_weights_only=True, mode="max", monitor=config["logging"]["monitor_metric"],
             ),  # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
             LearningRateMonitor("epoch"),
         ],  # Log learning rate every epoch

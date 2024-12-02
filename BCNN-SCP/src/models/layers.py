@@ -46,7 +46,7 @@ class BBBConv2d(pl.LightningModule):
             raise NotImplementedError
 
         if priors is None:
-            prior_mu = torch.zeros(self.filter_size*in_channels*out_channels)
+            prior_mu = torch.zeros(1)
             prior_covariance_matrix = prior_kernel(self.filter_shape[0], self.filter_shape[1])
             priors = {
                 'prior_mu': prior_mu,

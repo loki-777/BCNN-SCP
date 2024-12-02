@@ -7,10 +7,9 @@ experiment_name: ""
 # Data settings
 data:
   dataset: "MNIST"
-  num_workers: 0
   num_classes: 10
   batch_size: 32 # Batch size for training/validation
-  num_workers: 4 # Number of data loader workers
+  num_workers: 0 # Number of data loader workers
   input_size: [28, 28] # Image dimensions (height, width)
   normalize_mean: 0.5 # Mean for normalization
   normalize_std: 0.5 # Standard deviation for normalization
@@ -18,12 +17,12 @@ data:
 # Model settings
 model:
   model_name: "BCNN"
-  num_samples: 100
+  num_samples: 5
   kernel: "RBF"
 
 # Training settings
 training:
-  epochs: 50 # Number of training epochs
+  epochs: 10 # Number of training epochs
   learning_rate: 0.001 # Learning rate
   weight_decay: 0.0001 # Weight decay (L2 regularization)
   optimizer: "Adam" # Optimizer (e.g., adam, sgd)
