@@ -23,10 +23,10 @@ class LightningModule(pl.LightningModule):
         self.model = get_model(config)
 
         # metrics
-        self.accuracy_metric = Accuracy(num_classes=config["data"]["num_classes"])
-        self.precision_metric = Precision(num_classes=config["data"]["num_classes"], average='macro')
-        self.recall_metric = Recall(num_classes=config["data"]["num_classes"], average='macro')
-        self.f1_metric = F1Score(num_classes=config["data"]["num_classes"], average='macro')
+        self.accuracy_metric = Accuracy(num_classes=config["data"]["num_classes"], task="multiclass")
+        self.precision_metric = Precision(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
+        self.recall_metric = Recall(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
+        self.f1_metric = F1Score(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.loss_module = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, imgs):
@@ -126,8 +126,8 @@ if __name__ == "__main__":
     trainer = pl.Trainer(
         default_root_dir=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),  # Where to save models
         # We run on a single GPU (if possible)
-        accelerator="cpu",
-        # devices=num_gpus,
+        accelerator="gpu",
+        devices=num_gpus,
         # How many epochs to train for if no patience is set
         max_epochs=config["training"]["epochs"],
         callbacks=[

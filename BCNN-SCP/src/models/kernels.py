@@ -29,6 +29,8 @@ class RBFCovariance(SpatialCovariance):
         self.l = l
 
     def kernel(self, dists):
+        if isinstance(self.a, torch.Tensor):
+            dists = dists.to(self.a.device)
         return self.a**2 * torch.exp(-(dists**2) / (2 * self.l**2))
 
 

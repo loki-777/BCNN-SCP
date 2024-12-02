@@ -1,4 +1,4 @@
-import torch
+import pytorch_lightning as pl
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -7,7 +7,7 @@ from src.models.losses import *
 
 # priors can be provided as input, if not provided, (1,1) RBF Kernel is used by default
 # kernel can be provided, RBF used by default
-class BBBConv2d(nn.Module):
+class BBBConv2d(pl.LightningModule):
     def __init__(self, in_channels, out_channels, filter_size,
                  stride=1, padding=0, dilation=1, priors=None, num_samples=1, kernel="RBF"):
 
@@ -73,7 +73,7 @@ class BBBConv2d(nn.Module):
             outputs = []
             num_iters = self.num_samples if self.training else 1
             for i in range(num_iters):
-                weight = self.sampled_weights[i,:].view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])
+                weight = self.sampled_weights[i,:].view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1]).to(input.device)
 
                 input_index = 0 if S == 1 else i
                 outputs.append(F.conv2d(input[:,input_index,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups))
@@ -97,7 +97,7 @@ class BBBConv2d(nn.Module):
                 posterior_kernel = RationalQuadraticCovariance(self.a[i], self.l[i], self.alpha[i])
 
             filterwise_covariance_matrix = posterior_kernel(self.filter_shape[0], self.filter_shape[1])
-            jitter = 1e-6 * torch.eye(filterwise_covariance_matrix.size(0))
+            jitter = 1e-6 * torch.eye(filterwise_covariance_matrix.size(0), device=filterwise_covariance_matrix.device)
             filterwise_covariance_matrix += jitter
 
             # samples "num_samples" weights at once

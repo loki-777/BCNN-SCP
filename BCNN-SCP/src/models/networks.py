@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import pytorch_lightning as pl
 from src.models.layers import *
 
-class BCNN(nn.Module):
+class BCNN(pl.LightningModule):
     def __init__(self, num_samples=1, kernel="RBF"):
         super(BCNN, self).__init__()
         self.conv1 = BBBConv2d(1, 32, filter_size=3, stride=1, padding=1, num_samples=num_samples, kernel=kernel)
@@ -38,7 +38,7 @@ class BCNN(nn.Module):
             "kl_loss": kl
         }
 
-class CNN(nn.Module):
+class CNN(pl.LightningModule):
     def __init__(self):
         super(CNN, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
