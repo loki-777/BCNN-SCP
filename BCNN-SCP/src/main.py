@@ -67,6 +67,9 @@ class LightningModule(pl.LightningModule):
             combined_loss += kl_loss
 
         self.log("train_loss", combined_loss)
+        if kl_loss:
+            self.log("train_ce_loss", criterion_loss, sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_kl_loss", kl_loss, sync_dist=True, on_step=False, on_epoch=True)
         return combined_loss  # Return tensor to call ".backward" on
 
     def validation_step(self, batch, batch_idx):
@@ -74,13 +77,13 @@ class LightningModule(pl.LightningModule):
         preds = self.model(imgs)["logits"].squeeze().argmax(dim=-1)
 
         if "accuracy" in self.config["validation"]["metrics"]:
-            self.log("val_accuracy", self.accuracy_metric(preds, labels))
+            self.log("val_accuracy", self.accuracy_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "precision" in self.config["validation"]["metrics"]:
-            self.log("val_precision", self.precision_metric(preds, labels))
+            self.log("val_precision", self.precision_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "recall" in self.config["validation"]["metrics"]:
-            self.log("val_recall", self.recall_metric(preds, labels))
+            self.log("val_recall", self.recall_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "f1" in self.config["validation"]["metrics"]:
-            self.log("val_f1", self.f1_metric(preds, labels))
+            self.log("val_f1", self.f1_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
         imgs, labels = batch
