@@ -4,6 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 
 import torch.nn as nn
 from torchmetrics import Accuracy, Precision, Recall, F1Score
@@ -123,11 +124,18 @@ if __name__ == "__main__":
 
     pl.seed_everything(42)
 
+    wandb_logger = WandbLogger(
+        project=config["project_name"],
+        name=config["experiment_name"],
+        log_model=False
+    )
+    wandb_logger.experiment.config.update(config)
+
     trainer = pl.Trainer(
         default_root_dir=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),  # Where to save models
         # We run on a single GPU (if possible)
-        accelerator="gpu",
-        devices=num_gpus,
+        accelerator="cpu",
+        # devices=num_gpus,
         # How many epochs to train for if no patience is set
         max_epochs=config["training"]["epochs"],
         callbacks=[
@@ -136,7 +144,8 @@ if __name__ == "__main__":
                 save_weights_only=True, mode="max", monitor=config["logging"]["monitor_metric"],
             ),  # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
             LearningRateMonitor("epoch"),
-        ],  # Log learning rate every epoch
+        ],
+        logger=wandb_logger
     )
 
     model = LightningModule(config)

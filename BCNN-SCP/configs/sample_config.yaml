@@ -1,8 +1,8 @@
 # General settings
 
 # for WandB logging
-project_name: ""
-experiment_name: ""
+project_name: "BCNN-SCP"
+experiment_name: "Test run"
 
 # Data settings
 data:
