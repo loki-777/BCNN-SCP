@@ -118,6 +118,8 @@ if __name__ == "__main__":
         print(f"GPU is available. Number of GPUs: {num_gpus}")
     else:
         print("GPU is not available.")
+    
+    use_gpu = True if config["device"] == "gpu" else False
 
     # prep data
     train_loader, val_loader, test_loader = get_dataloaders(config)
@@ -134,8 +136,8 @@ if __name__ == "__main__":
     trainer = pl.Trainer(
         default_root_dir=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),  # Where to save models
         # We run on a single GPU (if possible)
-        accelerator="cpu",
-        # devices=num_gpus,
+        accelerator=config["device"],
+        devices=num_gpus if use_gpu else None,
         # How many epochs to train for if no patience is set
         max_epochs=config["training"]["epochs"],
         callbacks=[

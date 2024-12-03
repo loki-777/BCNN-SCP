@@ -8,8 +8,8 @@ from src.models.losses import *
 # priors can be provided as input, if not provided, (1,1) RBF Kernel is used by default
 # kernel can be provided, RBF used by default
 class BBBConv2d(pl.LightningModule):
-    def __init__(self, in_channels, out_channels, filter_size,
-                 stride=1, padding=0, dilation=1, priors=None, num_samples=1, kernel="RBF"):
+    def __init__(self, in_channels, out_channels, filter_size, priors,
+                 stride=1, padding=0, dilation=1, num_samples=1, kernel="RBF"):
 
         super(BBBConv2d, self).__init__()
         self.in_channels = in_channels
@@ -31,31 +31,31 @@ class BBBConv2d(pl.LightningModule):
         if (kernel == "RBF"):
             self.a = nn.Parameter(torch.rand(in_channels*out_channels))
             self.l = nn.Parameter(torch.rand(in_channels*out_channels))
-            prior_kernel = RBFCovariance(1, 1)
+            
         elif (kernel == "Matern"):
             self.a = nn.Parameter(torch.rand(in_channels*out_channels))
             self.l = nn.Parameter(torch.rand(in_channels*out_channels))
             self.w = nn.Parameter(torch.rand(in_channels*out_channels))
-            prior_kernel = MaternCovariance(1, 1, 1)
+            
         elif (kernel == "RQC"):
             self.a = nn.Parameter(torch.rand(in_channels*out_channels))
             self.l = nn.Parameter(torch.rand(in_channels*out_channels))
             self.alpha = nn.Parameter(torch.rand(in_channels*out_channels))
-            prior_kernel = RationalQuadraticCovariance(1, 1, 1)
+            
         else:
             raise NotImplementedError
-
-        if priors is None:
-            prior_mu = torch.zeros(1)
-            prior_covariance_matrix = prior_kernel(self.filter_shape[0], self.filter_shape[1])
-            priors = {
-                'prior_mu': prior_mu,
-                'prior_cov': prior_covariance_matrix
-            }
+        
+        # setting up priors
+        if (priors["kernel"] == "RBF"):
+            prior_kernel = RBFCovariance(priors["kernel_params"][0], priors["kernel_params"][1])
+        elif (priors["kernel"] == "Matern"):
+            prior_kernel = MaternCovariance(priors["kernel_params"][0], priors["kernel_params"][1], priors["kernel_params"][2])
+        elif (priors["kernel"] == "RQC"):
+            prior_kernel = RationalQuadraticCovariance(priors["kernel_params"][0], priors["kernel_params"][1], priors["kernel_params"][2])
 
         # prior mean and convariance
-        self.prior_mu = priors['prior_mu']
-        self.prior_cov = priors['prior_cov']
+        self.prior_mu = torch.zeros(1)
+        self.prior_cov = prior_kernel(self.filter_shape[0], self.filter_shape[1])
 
         self.prior_cov_inv = torch.linalg.inv(self.prior_cov)
         self.prior_cov_logdet = torch.logdet(self.prior_cov)

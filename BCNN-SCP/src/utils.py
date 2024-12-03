@@ -5,7 +5,8 @@ from torch.utils.data import DataLoader, random_split
 
 def get_model(config):
     if config["model"]["model_name"] == "BCNN":
-        return BCNN(num_samples=config["model"]["num_samples"], kernel=config["model"]["kernel"])
+        return BCNN(config["model"]["prior_kernel"], config["model"]["prior_kernel_params"], 
+                    num_samples=config["model"]["num_samples"], kernel=config["model"]["kernel"])
     elif config["model"]["model_name"] == "CNN":
         return CNN()
 

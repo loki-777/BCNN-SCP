@@ -3,6 +3,7 @@
 # for WandB logging
 project_name: "BCNN-SCP"
 experiment_name: "Test run"
+device: "cpu" # if gpu, then all available GPUs are used
 
 # Data settings
 data:
@@ -19,6 +20,8 @@ model:
   model_name: "BCNN"
   num_samples: 5
   kernel: "RBF"
+  prior_kernel: "RBF"
+  prior_kernel_params: [1, 1, 0] # in the form [a, l, (w or alpha)]
 
 # Training settings
 training:
