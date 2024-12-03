@@ -5,21 +5,23 @@ from scipy.special import gamma, kv
 
 class SpatialCovariance:
     def __call__(self, h, w, device=None):
-        ys = torch.linspace(0, 1, h)
-        xs = torch.linspace(0, 1, w)
+        ys = torch.linspace(0, 1, h, device=device)
+        xs = torch.linspace(0, 1, w, device=device)
         points = torch.cartesian_prod(ys, xs)
 
-        squared_norms = torch.sum(points**2, dim=1)
+        squared_norms = torch.sum(points**2, dim=1) # p_i.T @ p_i
         dists = torch.sqrt(
-            squared_norms.unsqueeze(-1)
-            - 2 * torch.matmul(points, points.T)
-            + squared_norms.unsqueeze(0)
+            squared_norms.unsqueeze(-1) # p_i.T @ p_i
+            - 2 * torch.matmul(points, points.T) # -2 * p_i.T @ p_j
+            + squared_norms.unsqueeze(0) # p_j.T @ p_j
         )
 
-        if device is not None:
-            dists = dists.to(device)
+        # Expand dimension for broadcasting
+        dists = dists.unsqueeze(-1) # (h*w, h*w, 1)
+        covar = self.kernel(dists) # (h*w, h*w, d)
+        covar = covar.permute(2, 0, 1) # (d, h*w, h*w)
+        covar = covar.squeeze(0) # (d, h*w, h*w) or (h*w, h*w)
 
-        covar = self.kernel(dists)
         return covar
 
     def kernel(self, dists):

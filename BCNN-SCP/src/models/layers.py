@@ -16,6 +16,7 @@ class BBBConv2d(pl.LightningModule):
         self.out_channels = out_channels
         self.filter_shape = filter_size if isinstance(filter_size, tuple) else (filter_size, filter_size)
         self.filter_size = self.filter_shape[0] * self.filter_shape[1]
+        self.filter_num = in_channels * out_channels
         self.stride = stride
         self.padding = padding
         self.dilation = dilation
@@ -29,22 +30,22 @@ class BBBConv2d(pl.LightningModule):
         self.alpha = None
 
         if (kernel == "RBF"):
-            self.a = nn.Parameter(torch.rand(in_channels*out_channels))
-            self.l = nn.Parameter(torch.rand(in_channels*out_channels))
-            
+            self.a = nn.Parameter(torch.rand(self.filter_num))
+            self.l = nn.Parameter(torch.rand(self.filter_num))
+
         elif (kernel == "Matern"):
-            self.a = nn.Parameter(torch.rand(in_channels*out_channels))
-            self.l = nn.Parameter(torch.rand(in_channels*out_channels))
-            self.w = nn.Parameter(torch.rand(in_channels*out_channels))
-            
+            self.a = nn.Parameter(torch.rand(self.filter_num))
+            self.l = nn.Parameter(torch.rand(self.filter_num))
+            self.w = nn.Parameter(torch.rand(self.filter_num))
+
         elif (kernel == "RQC"):
-            self.a = nn.Parameter(torch.rand(in_channels*out_channels))
-            self.l = nn.Parameter(torch.rand(in_channels*out_channels))
-            self.alpha = nn.Parameter(torch.rand(in_channels*out_channels))
-            
+            self.a = nn.Parameter(torch.rand(self.filter_num))
+            self.l = nn.Parameter(torch.rand(self.filter_num))
+            self.alpha = nn.Parameter(torch.rand(self.filter_num))
+
         else:
             raise NotImplementedError
-        
+
         # setting up priors
         if (priors["kernel"] == "RBF"):
             prior_kernel = RBFCovariance(priors["kernel_params"][0], priors["kernel_params"][1])
@@ -60,7 +61,7 @@ class BBBConv2d(pl.LightningModule):
         self.prior_cov_inv = torch.linalg.inv(self.prior_cov)
         self.prior_cov_logdet = torch.logdet(self.prior_cov)
 
-        self.W_mu = nn.Parameter(torch.rand(in_channels*out_channels*self.filter_size))
+        self.W_mu = nn.Parameter(torch.rand(self.filter_num, self.filter_size))
         self.sampled_weights = torch.rand((self.num_samples,) + self.W_mu.shape)
 
     def forward(self, input, sample=True):
@@ -93,24 +94,14 @@ class BBBConv2d(pl.LightningModule):
         return KL_DIV(self.prior_mu, self.prior_cov_inv, self.prior_cov_logdet, self.W_mu, self.W_cov)
 
     def sample_weights(self):
-        blocks = []
-        for i in range(self.in_channels*self.out_channels):
-            # different a and l for different filter (x,y)
-            if (self.kernel == "RBF"):
-                posterior_kernel = RBFCovariance(self.a[i], self.l[i])
-            elif (self.kernel == "Matern"):
-                posterior_kernel = MaternCovariance(self.a[i], self.l[i], self.w[i])
-            elif (self.kernel == "RQC"):
-                posterior_kernel = RationalQuadraticCovariance(self.a[i], self.l[i], self.alpha[i])
+        if (self.kernel == "RBF"):
+            posterior_kernel = RBFCovariance(self.a, self.l)
+        elif (self.kernel == "Matern"):
+            posterior_kernel = MaternCovariance(self.a, self.l, self.w)
+        elif (self.kernel == "RQC"):
+            posterior_kernel = RationalQuadraticCovariance(self.a, self.l, self.alpha)
 
-            filterwise_covariance_matrix = posterior_kernel(self.filter_shape[0], self.filter_shape[1], device=self.device)
-            jitter = 1e-6 * torch.eye(filterwise_covariance_matrix.size(0), device=filterwise_covariance_matrix.device)
-            filterwise_covariance_matrix += jitter
-
-            # samples "num_samples" weights at once
-            mvn = torch.distributions.MultivariateNormal(self.W_mu[self.filter_size*i : self.filter_size*i+self.filter_size], filterwise_covariance_matrix)
-            self.sampled_weights[:, self.filter_size*i : self.filter_size*i+self.filter_size] = mvn.sample((self.num_samples,))
-
-            blocks.append(filterwise_covariance_matrix)
-
-        self.W_cov = torch.stack(blocks) # concats only the blocks of the block diagonal covariance matrix
+        self.W_cov = posterior_kernel(self.filter_shape[0], self.filter_shape[1], device=self.device) # shape: (filter_num, filter_size, filter_size)
+        L = torch.linalg.cholesky(self.W_cov) # shape: (filter_num, filter_size, filter_size)
+        noise = torch.normal(0, 1, (self.num_samples, self.filter_num, self.filter_size), device=self.device) # shape: (num_samples, filter_num, filter_size)
+        self.sampled_weights = self.W_mu + torch.einsum("fij,sfj->sfi", L, noise) # shape: (num_samples, filter_num, filter_size)
