@@ -66,7 +66,7 @@ class LightningModule(pl.LightningModule):
         if kl_loss:
             combined_loss += kl_loss
 
-        self.log("train_loss", combined_loss)
+        self.log("train_loss", combined_loss, sync_dist=True, on_step=False, on_epoch=True)
         if kl_loss:
             self.log("train_ce_loss", criterion_loss, sync_dist=True, on_step=False, on_epoch=True)
             self.log("train_kl_loss", kl_loss, sync_dist=True, on_step=False, on_epoch=True)

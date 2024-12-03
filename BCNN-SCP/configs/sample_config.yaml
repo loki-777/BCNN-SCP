@@ -25,7 +25,7 @@ model:
 
 # Training settings
 training:
-  epochs: 10 # Number of training epochs
+  epochs: 5 # Number of training epochs
   learning_rate: 0.001 # Learning rate
   weight_decay: 0.0001 # Weight decay (L2 regularization)
   optimizer: "Adam" # Optimizer (e.g., adam, sgd)
