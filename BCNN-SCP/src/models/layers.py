@@ -77,7 +77,7 @@ class BBBConv2d(pl.LightningModule):
             outputs = []
             num_iters = self.num_samples if self.training else 1
             for i in range(num_iters):
-                weight = self.sampled_weights[i,:].view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1]).to(input.device)
+                weight = self.sampled_weights[i,:].view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])
 
                 input_index = 0 if S == 1 else i
                 outputs.append(F.conv2d(input[:,input_index,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups))
@@ -87,10 +87,9 @@ class BBBConv2d(pl.LightningModule):
             return F.conv2d(input[:,0,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups)
 
     def kl_loss(self):
-        device = self.W_mu.device
-        self.prior_mu = self.prior_mu.to(device)
-        self.prior_cov_inv = self.prior_cov_inv.to(device)
-        self.prior_cov_logdet = self.prior_cov_logdet.to(device)
+        self.prior_mu = self.prior_mu.to(self.device)
+        self.prior_cov_inv = self.prior_cov_inv.to(self.device)
+        self.prior_cov_logdet = self.prior_cov_logdet.to(self.device)
         return KL_DIV(self.prior_mu, self.prior_cov_inv, self.prior_cov_logdet, self.W_mu, self.W_cov)
 
     def sample_weights(self):
