@@ -59,9 +59,7 @@ class RationalQuadraticCovariance(SpatialCovariance):
         self.alpha = alpha
 
     def kernel(self, dists):
-        return self.a**2 * (1 + dists**2 / (2 * self.alpha * self.l**2)) ** (
-            -self.alpha
-        )
+        return self.a**2 * (1 + dists**2 / (2 * self.alpha * self.l**2)) ** (-self.alpha)
 
 
 if __name__ == "__main__":

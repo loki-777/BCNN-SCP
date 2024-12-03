@@ -26,7 +26,7 @@ class BBBConv2d(pl.LightningModule):
 
         self.a = None
         self.l = None
-        self.w = None
+        self.nu = None
         self.alpha = None
 
         if (kernel == "RBF"):
@@ -36,7 +36,7 @@ class BBBConv2d(pl.LightningModule):
         elif (kernel == "Matern"):
             self.a = nn.Parameter(torch.rand(self.filter_num))
             self.l = nn.Parameter(torch.rand(self.filter_num))
-            self.w = nn.Parameter(torch.rand(self.filter_num))
+            self.nu = nn.Parameter(torch.rand(self.filter_num))
 
         elif (kernel == "RQC"):
             self.a = nn.Parameter(torch.rand(self.filter_num))
@@ -96,7 +96,7 @@ class BBBConv2d(pl.LightningModule):
         if (self.kernel == "RBF"):
             posterior_kernel = RBFCovariance(self.a, self.l)
         elif (self.kernel == "Matern"):
-            posterior_kernel = MaternCovariance(self.a, self.l, self.w)
+            posterior_kernel = MaternCovariance(self.a, self.l, self.nu)
         elif (self.kernel == "RQC"):
             posterior_kernel = RationalQuadraticCovariance(self.a, self.l, self.alpha)
 

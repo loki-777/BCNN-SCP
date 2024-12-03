@@ -21,7 +21,7 @@ model:
   num_samples: 5
   kernel: "RBF"
   prior_kernel: "RBF"
-  prior_kernel_params: [1, 1, 0] # in the form [a, l, (w or alpha)]
+  prior_kernel_params: [1, 1, 0] # in the form [a, l, (nu or alpha)]
 
 # Training settings
 training:
