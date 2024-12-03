@@ -62,7 +62,7 @@ class BBBConv2d(pl.LightningModule):
         self.prior_cov_logdet = torch.logdet(self.prior_cov)
 
         self.W_mu = nn.Parameter(torch.rand(self.filter_num, self.filter_size))
-        self.sampled_weights = torch.rand((self.num_samples,) + self.W_mu.shape)
+        self.sampled_weights = None # shape: (num_samples, filter_num, filter_size)
 
     def forward(self, input, sample=True):
         # (B,S,C,H,W)
