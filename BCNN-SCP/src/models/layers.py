@@ -47,15 +47,15 @@ class BBBConv2d(pl.LightningModule):
 
         # setting up variational posteriors
         if (kernel == "RBF"):
-            self.a = nn.Parameter(uniform(1, 5, self.filter_num))
-            self.l = nn.Parameter(uniform(0.1, 1, self.filter_num))
+            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
+            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
         elif (kernel == "Matern"):
-            self.a = nn.Parameter(uniform(1, 5, self.filter_num))
-            self.l = nn.Parameter(uniform(0.1, 1, self.filter_num))
+            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
+            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
             self.nu = nn.Parameter(uniform(0.1, 4, self.filter_num))
         elif (kernel == "RQC"):
-            self.a = nn.Parameter(uniform(1, 5, self.filter_num))
-            self.l = nn.Parameter(uniform(0.1, 1, self.filter_num))
+            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
+            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
             self.alpha = nn.Parameter(uniform(0.1, 4, self.filter_num))
         else:
             raise NotImplementedError
