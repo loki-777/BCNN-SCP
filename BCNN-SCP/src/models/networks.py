@@ -22,12 +22,13 @@ class BCNN(pl.LightningModule):
         x = x_in.unsqueeze(1)
         x = torch.relu(self.conv1(x))
         x = torch.relu(self.conv2(x))
-        y=[]
+
         num_iters = self.num_samples if self.training else 1
-        for i in range(num_iters):
-            y.append(self.pool(x[:,i,:,:,:]))
-        y = torch.stack(y, dim=1)
-        y = y.view(y.size(0), y.size(1), -1)  # Flatten
+        x = x[:,:num_iters,:,:,:]
+        x = x.view(x.size(0) * num_iters, x.size(2), x.size(3), x.size(4))
+        y = self.pool(x)
+        y = y.view(y.size(0) // num_iters, num_iters, -1)  # Flatten
+
         y = torch.relu(self.fc1(y))
         y = self.fc2(y)
 
