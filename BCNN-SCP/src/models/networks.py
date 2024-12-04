@@ -32,10 +32,11 @@ class BCNN(pl.LightningModule):
         y = self.fc2(y)
 
         kl = 0.0
-        for module in self.children():
-            if hasattr(module, 'kl_loss'):
-                module_kl_loss = module.kl_loss()
-                kl = kl + module_kl_loss
+        if self.training:
+            for module in self.children():
+                if hasattr(module, 'kl_loss'):
+                    module_kl_loss = module.kl_loss()
+                    kl = kl + module_kl_loss
 
         return {
             "logits": y,

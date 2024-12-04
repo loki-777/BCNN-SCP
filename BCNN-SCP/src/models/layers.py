@@ -69,7 +69,7 @@ class BBBConv2d(pl.LightningModule):
 
     def forward(self, input, sample=True):
         # (B,S,C,H,W)
-        if sample:
+        if self.training:
             # sample weights in self.sampled_weights, shape: (num_samples, filter_num, filter_size)
             self.sample_weights()
 
@@ -87,7 +87,7 @@ class BBBConv2d(pl.LightningModule):
             return torch.stack(outputs, dim=1)
         else:
             weight = self.W_mu.view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])
-            return F.conv2d(input[:,0,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups)
+            return F.conv2d(input[:,0,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups).unsqueeze(1)
 
     def kl_loss(self):
         self.prior_mu = self.prior_mu.to(self.device)
