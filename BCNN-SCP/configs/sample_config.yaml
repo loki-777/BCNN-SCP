@@ -2,7 +2,7 @@
 
 # for WandB logging
 project_name: "BCNN-SCP"
-experiment_name: "Test run"
+experiment_name: "BCNN RBF prior (2, 0.1) 5 samples"
 device: "cpu" # if gpu, then all available GPUs are used
 
 # Data settings
@@ -21,11 +21,11 @@ model:
   num_samples: 5
   kernel: "RBF"
   prior_kernel: "RBF"
-  prior_kernel_params: [1, 1, 0] # in the form [a, l, (nu or alpha)]
+  prior_kernel_params: [2, 0.1, 0] # in the form [a, l, (nu or alpha)]
 
 # Training settings
 training:
-  epochs: 5 # Number of training epochs
+  epochs: 20 # Number of training epochs
   learning_rate: 0.001 # Learning rate
   weight_decay: 0.0001 # Weight decay (L2 regularization)
   optimizer: "Adam" # Optimizer (e.g., adam, sgd)

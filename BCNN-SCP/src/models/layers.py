@@ -69,7 +69,7 @@ class BBBConv2d(pl.LightningModule):
 
     def forward(self, input, sample=True):
         # (B,S,C,H,W)
-        if self.training:
+        if sample:
             # sample weights in self.sampled_weights, shape: (num_samples, filter_num, filter_size)
             self.sample_weights()
 
@@ -88,6 +88,28 @@ class BBBConv2d(pl.LightningModule):
         else:
             weight = self.W_mu.view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])
             return F.conv2d(input[:,0,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups).unsqueeze(1)
+    
+    # def forward(self, input, sample=True):
+    #     B, S, C, H, W = input.shape
+
+    #     if self.training:
+    #         self.sample_weights()
+    #         input_reshaped = input.view(B * S, C, H, W)
+    #         weights = self.sampled_weights.repeat(B, 1, 1, 1, 1).view(B * S, self.out_channels, self.in_channels, *self.filter_shape)
+
+    #         output = F.conv2d(input_reshaped, weights, None, self.stride, self.padding, self.dilation, self.groups)
+    #         output = output.view(B, S, self.out_channels, output.shape[-2], output.shape[-1])
+
+    #         return output
+    #     else:
+    #         weight = self.W_mu.view(self.out_channels, self.in_channels, *self.filter_shape)
+    #         input_single = input[:, 0, :, :, :]
+
+    #         output = F.conv2d(input_single, weight, None, self.stride, self.padding, self.dilation, self.groups)
+    #         output = output.unsqueeze(1)
+
+    #         return output
+
 
     def kl_loss(self):
         self.prior_mu = self.prior_mu.to(self.device)

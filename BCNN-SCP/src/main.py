@@ -62,7 +62,8 @@ class LightningModule(pl.LightningModule):
         else:
             criterion_loss = self.loss_module(logits, labels).sum()
 
-        combined_loss = criterion_loss
+        combined_loss = 0.0
+        combined_loss += criterion_loss
         if kl_loss:
             combined_loss += kl_loss
 
