@@ -2,7 +2,7 @@
 
 # for WandB logging
 project_name: "BCNN-SCP"
-experiment_name: "BCNN RBF prior (2, 0.1) 5 samples"
+experiment_name: "BCNN RBF(100, 0.1)"
 device: "cpu" # if gpu, then all available GPUs are used
 
 # Data settings
@@ -18,19 +18,22 @@ data:
 # Model settings
 model:
   model_name: "BCNN"
-  num_samples: 5
+  out_channels_conv1: 16 # Number of output channels for the first convolutional layer
+  out_channels_conv2: 32 # Number of output channels for the second convolutional layer
+  num_samples_training: 5 # Number of samples for training, null for mean weights
+  num_samples_predict: null # Number of samples for prediction, null for mean weights
   kernel: "RBF"
   prior_kernel: "RBF"
-  prior_kernel_params: [2, 0.1, 0] # in the form [a, l, (nu or alpha)]
+  prior_kernel_params: [100, 0.1] # in the form [a, l, (nu or alpha)]
 
 # Training settings
 training:
   epochs: 20 # Number of training epochs
   learning_rate: 0.001 # Learning rate
   weight_decay: 0.0001 # Weight decay (L2 regularization)
-  optimizer: "Adam" # Optimizer (e.g., adam, sgd)
-  scheduler: # Learning rate scheduler settings
-    gamma: 0.1 # Gamma for StepLR
+  optimizer: "Adam" # Optimizer (e.g., Adam, SGD)
+  # scheduler: # Learning rate scheduler settings
+  #   gamma: 0.1 # Gamma for StepLR
 
 # Validation settings
 validation:

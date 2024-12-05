@@ -52,13 +52,15 @@ class LightningModule(pl.LightningModule):
         logits = preds["logits"]
         kl_loss = preds["kl_loss"]
 
-        if len(logits.shape) == 3:
+        # (batch_size, num_samples, num_classes)
+        if logits.dim() == 3:
             logits = logits.permute(0, 2, 1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes, num_samples)
             labels = labels.unsqueeze(-1) # (batch_size, ) -> (batch_size, 1)
             labels = labels.expand(-1, logits.shape[-1]) # (batch_size, 1) -> (batch_size, num_samples)
             criterion_loss = self.loss_module(logits, labels) # (batch_size, num_samples)
             criterion_loss = criterion_loss.mean(-1) # average over samples
             criterion_loss = criterion_loss.sum() # sum over minibatch
+        # (batch_size, num_classes)
         else:
             criterion_loss = self.loss_module(logits, labels).sum()
 
@@ -75,7 +77,14 @@ class LightningModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         imgs, labels = batch
-        preds = self.model(imgs)["logits"].squeeze().argmax(dim=-1)
+        preds = self.model(imgs)["logits"]
+
+        # (batch_size, num_samples, num_classes)
+        if preds.dim() == 3:
+            preds = preds.softmax(dim=-1) # (batch_size, num_samples, num_classes)
+            preds = preds.mean(dim=1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes)
+
+        preds = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
 
         if "accuracy" in self.config["validation"]["metrics"]:
             self.log("val_accuracy", self.accuracy_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
@@ -88,7 +97,14 @@ class LightningModule(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         imgs, labels = batch
-        preds = self.model(imgs)["logits"].squeeze().argmax(dim=-1)
+        preds = self.model(imgs)["logits"]
+
+        # (batch_size, num_samples, num_classes)
+        if preds.dim() == 3:
+            preds = preds.softmax(dim=-1) # (batch_size, num_samples, num_classes)
+            preds = preds.mean(dim=1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes)
+
+        preds = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
 
         if "accuracy" in self.config["validation"]["metrics"]:
             self.log("val_accuracy", self.accuracy_metric(preds, labels))

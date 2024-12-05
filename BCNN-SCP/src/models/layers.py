@@ -11,8 +11,8 @@ def uniform(a, b, size):
 # priors can be provided as input, if not provided, (1,1) RBF Kernel is used by default
 # kernel can be provided, RBF used by default
 class BBBConv2d(pl.LightningModule):
-    def __init__(self, in_channels, out_channels, filter_size, priors,
-                 stride=1, padding=0, dilation=1, num_samples=1, kernel="RBF"):
+    def __init__(self, in_channels, out_channels, filter_size, priors={"kernel": "RBF", "kernel_params": [1, 1]},
+                 stride=1, padding=0, dilation=1, kernel="RBF"):
 
         super(BBBConv2d, self).__init__()
         self.in_channels = in_channels
@@ -24,7 +24,6 @@ class BBBConv2d(pl.LightningModule):
         self.padding = padding
         self.dilation = dilation
         self.groups = 1
-        self.num_samples = num_samples
         self.kernel = kernel
 
         # setting up priors
@@ -49,83 +48,62 @@ class BBBConv2d(pl.LightningModule):
         if (kernel == "RBF"):
             self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
             self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
+            self.posterior_kernel = RBFCovariance(self.a, self.l)
         elif (kernel == "Matern"):
             self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
             self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
             self.nu = nn.Parameter(uniform(0.1, 4, self.filter_num))
+            self.posterior_kernel = MaternCovariance(self.a, self.l, self.nu)
         elif (kernel == "RQC"):
             self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
             self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
             self.alpha = nn.Parameter(uniform(0.1, 4, self.filter_num))
+            self.posterior_kernel = RationalQuadraticCovariance(self.a, self.l, self.alpha)
         else:
             raise NotImplementedError
 
-        # variational mean and covariance
+        # variational mean
         self.W_mu = nn.Parameter(torch.randn(self.filter_num, self.filter_size)) # shape: (filter_num, filter_size)
-        self.W_sigma = None # computed in sample_weights, shape: (filter_num, filter_size, filter_size)
 
-        # sampled weights
-        self.sampled_weights = None # sampled in sample_weights, shape: (num_samples, filter_num, filter_size)
+    # variational covariance
+    @property
+    def W_sigma(self):
+        return self.posterior_kernel(self.filter_shape[0], self.filter_shape[1], device=self.device) # shape: (filter_num, filter_size, filter_size)
 
-    def forward(self, input, sample=True):
-        # (B,S,C,H,W)
-        if sample:
-            # sample weights in self.sampled_weights, shape: (num_samples, filter_num, filter_size)
-            self.sample_weights()
-
-            # now we have sampled "num_samples" at once
-            # we iterate through the S dimension and run each set of weights for each sample
-            # it is guaranteed that self.num_samples matches with S (except for first layer, where input will have S = 1)
-            S = input.shape[1]
-            outputs = []
-            num_iters = self.num_samples if self.training else 1
-            for i in range(num_iters):
-                weight = self.sampled_weights[i].view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])
-
-                input_index = 0 if S == 1 else i
-                outputs.append(F.conv2d(input[:,input_index,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups))
-            return torch.stack(outputs, dim=1)
-        else:
-            weight = self.W_mu.view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])
-            return F.conv2d(input[:,0,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups).unsqueeze(1)
-    
-    # def forward(self, input, sample=True):
-    #     B, S, C, H, W = input.shape
-
-    #     if self.training:
-    #         self.sample_weights()
-    #         input_reshaped = input.view(B * S, C, H, W)
-    #         weights = self.sampled_weights.repeat(B, 1, 1, 1, 1).view(B * S, self.out_channels, self.in_channels, *self.filter_shape)
-
-    #         output = F.conv2d(input_reshaped, weights, None, self.stride, self.padding, self.dilation, self.groups)
-    #         output = output.view(B, S, self.out_channels, output.shape[-2], output.shape[-1])
-
-    #         return output
-    #     else:
-    #         weight = self.W_mu.view(self.out_channels, self.in_channels, *self.filter_shape)
-    #         input_single = input[:, 0, :, :, :]
-
-    #         output = F.conv2d(input_single, weight, None, self.stride, self.padding, self.dilation, self.groups)
-    #         output = output.unsqueeze(1)
-
-    #         return output
-
-
-    def kl_loss(self):
+    def to(self, device):
+        super().to(device)
         self.prior_mu = self.prior_mu.to(self.device)
         self.prior_sigma_inv = self.prior_sigma_inv.to(self.device)
         self.prior_sigma_logdet = self.prior_sigma_logdet.to(self.device)
+
+    def forward(self, inputs):
+        # If sampling, sample weights and forward for each sample
+        # (B,S,C,H,W)
+        if inputs.dim() == 5:
+            # number of samples
+            num_samples = inputs.shape[1]
+
+            # sample weights from W_mu and W_sigma, shape: (num_samples, filter_num, filter_size)
+            sampled_weights = self.sample_weights(num_samples)
+
+            # forward for each sample
+            outputs = []
+            for s in range(num_samples):
+                weight = sampled_weights[s].view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])
+                outputs.append(F.conv2d(inputs[:,s,:,:,:], weight, None, self.stride, self.padding, self.dilation, self.groups))
+            return torch.stack(outputs, dim=1)
+
+        # If not sampling, use the mean weights
+        # (B,C,H,W)
+        else:
+            weight = self.W_mu.view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])
+            return F.conv2d(inputs, weight, None, self.stride, self.padding, self.dilation, self.groups)
+
+    def kl_loss(self):
         return KL_DIV(self.prior_mu, self.prior_sigma_inv, self.prior_sigma_logdet, self.W_mu, self.W_sigma)
 
-    def sample_weights(self):
-        if (self.kernel == "RBF"):
-            posterior_kernel = RBFCovariance(self.a, self.l)
-        elif (self.kernel == "Matern"):
-            posterior_kernel = MaternCovariance(self.a, self.l, self.nu)
-        elif (self.kernel == "RQC"):
-            posterior_kernel = RationalQuadraticCovariance(self.a, self.l, self.alpha)
-
-        self.W_sigma = posterior_kernel(self.filter_shape[0], self.filter_shape[1], device=self.device) # shape: (filter_num, filter_size, filter_size)
+    def sample_weights(self, num_samples):
         L = torch.linalg.cholesky(self.W_sigma) # shape: (filter_num, filter_size, filter_size)
-        noise = torch.randn((self.num_samples, self.filter_num, self.filter_size), device=self.device) # shape: (num_samples, filter_num, filter_size)
-        self.sampled_weights = self.W_mu + torch.einsum("fij,sfj->sfi", L, noise) # shape: (num_samples, filter_num, filter_size)
+        noise = torch.randn((num_samples, self.filter_num, self.filter_size), device=self.device) # shape: (num_samples, filter_num, filter_size)
+        sampled_weights = self.W_mu + torch.einsum("fij,sfj->sfi", L, noise) # shape: (num_samples, filter_num, filter_size)
+        return sampled_weights
