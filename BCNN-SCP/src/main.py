@@ -114,6 +114,18 @@ class LightningModule(pl.LightningModule):
             self.log("val_recall", self.recall_metric(preds, labels))
         if "f1" in self.config["validation"]["metrics"]:
             self.log("val_f1", self.f1_metric(preds, labels))
+    
+    def predict_single(self, x):
+        self.eval()  # Ensure the model is in evaluation mode
+        with torch.no_grad():  # Disable gradient computation
+            if not isinstance(x, torch.Tensor):
+                x = torch.tensor(x, dtype=torch.float32)  # Convert input to tensor if needed
+            if x.ndim == 1:
+                x = x.unsqueeze(0)  # Add batch dimension for single data point
+            probabilities = self(x)["logits"].softmax(dim=-1).squeeze()
+            return probabilities
+
+
 
 if __name__ == "__main__":
 
@@ -172,4 +184,9 @@ if __name__ == "__main__":
 
     model = LightningModule(config)
     print(model)
-    trainer.fit(model, train_loader, val_loader)
+    
+    for batch in test_loader:
+        img, _ = batch
+        print(model.predict_single(img).shape)
+        break
+    # trainer.fit(model, train_loader, val_loader)
