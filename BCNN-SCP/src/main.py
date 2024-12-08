@@ -185,8 +185,4 @@ if __name__ == "__main__":
     model = LightningModule(config)
     print(model)
     
-    for batch in test_loader:
-        img, _ = batch
-        print(model.predict_single(img).shape)
-        break
-    # trainer.fit(model, train_loader, val_loader)
+    trainer.fit(model, train_loader, val_loader)
