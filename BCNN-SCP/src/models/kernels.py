@@ -3,6 +3,19 @@ import torch
 from scipy.special import gamma, kv
 
 
+class IndependentKernel:
+    def __init__(self, a=1):
+        # If a.shape == (d, h*w), expand dimension for broadcasting
+        if isinstance(a, torch.Tensor) and a.dim() == 2:
+            a = a.unsqueeze(-1) # (d, h*w) -> (d, h*w, 1)
+        self.a = a
+
+    def __call__(self, h, w, device=None):
+        covar = torch.eye(h * w, device=device) # (h*w, h*w)
+        covar = self.a**2 * covar # (h*w, h*w) or (d, h*w, h*w)
+        return covar
+
+
 class SpatialKernel:
     def __call__(self, h, w, device=None):
         ys = torch.linspace(0, 1, h, device=device)
@@ -29,7 +42,7 @@ class SpatialKernel:
 
 
 class RBFKernel(SpatialKernel):
-    def __init__(self, a, l):
+    def __init__(self, a=1, l=1):
         self.a = a
         self.l = l
 
@@ -38,7 +51,7 @@ class RBFKernel(SpatialKernel):
 
 
 class MaternKernel(SpatialKernel):
-    def __init__(self, a, l, nu):
+    def __init__(self, a=1, l=1, nu=1):
         self.a = a
         self.l = l
         self.nu = nu
@@ -53,24 +66,13 @@ class MaternKernel(SpatialKernel):
 
 
 class RationalQuadraticKernel(SpatialKernel):
-    def __init__(self, a, l, alpha):
+    def __init__(self, a=1, l=1, alpha=1):
         self.a = a
         self.l = l
         self.alpha = alpha
 
     def kernel(self, dists):
         return self.a**2 * (1 + dists**2 / (2 * self.alpha * self.l**2)) ** (-self.alpha)
-
-
-class IndependentKernel(SpatialKernel):
-    def __init__(self, a):
-        self.a = a # () or (h*w, d)
-
-    def kernel(self, dists):
-        eye = torch.eye(dists.shape[0], device=dists.device) # (h*w, h*w)
-        # Expand dimension for broadcasting
-        eye = eye.unsqueeze(-1) # (h*w, h*w, 1)
-        return self.a**2 * eye # (h*w, h*w, 1) or (h*w, h*w, d)
 
 
 if __name__ == "__main__":

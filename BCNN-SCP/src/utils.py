@@ -10,9 +10,7 @@ def get_model(config):
                     num_samples_training=config["model"]["num_samples_training"],
                     num_samples_predict=config["model"]["num_samples_predict"],
                     prior_kernel=config["model"]["prior_kernel"],
-                    prior_kernel_params=config["model"]["prior_kernel_params"],
-                    kernel=config["model"]["kernel"],
-                    kernel_init=config["model"]["kernel_init"])
+                    kernel=config["model"]["kernel"])
     elif config["model"]["model_name"] == "CNN":
         return CNN(out_channels_conv1=config["model"]["out_channels_conv1"],
                    out_channels_conv2=config["model"]["out_channels_conv2"])

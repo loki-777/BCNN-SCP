@@ -6,17 +6,15 @@ from src.models.kernels import *
 from src.models.losses import *
 
 # For parameter initialization
-def log_normal(init_params, size):
-    mu, sigma, x_min, x_max = init_params
+def log_normal(size, mu=-1, sigma=0.5, min=0.1, max=1):
     z = torch.randn(size)
     x = torch.exp(mu + sigma * z)
-    x = x.clamp(x_min, x_max)
+    x = x.clamp(min, max)
     return x
 
 class BBBConv2d(pl.LightningModule):
-    def __init__(self, in_channels, out_channels, filter_size, stride=1, padding=1, dilation=1,
-                 prior_kernel=None, prior_kernel_params=None,
-                 kernel=None, kernel_init=None):
+    def __init__(self, in_channels, out_channels, filter_size=3, stride=1, padding=1, dilation=1,
+                 prior_kernel=None, kernel=None):
 
         super(BBBConv2d, self).__init__()
         self.in_channels = in_channels
@@ -29,55 +27,48 @@ class BBBConv2d(pl.LightningModule):
         self.dilation = dilation
         self.groups = 1
 
-        # Default kernel
-        if prior_kernel is None:
-            prior_kernel = "Independent"
-        if prior_kernel_params is None:
-            prior_kernel_params = [1, 1, 1]
-
-        if kernel is None:
-            kernel = "Independent"
-        if kernel_init is None:
-            kernel_init = [-1, 0.5, 0.1, 1.0]
-
         # Setting up priors
-        if (prior_kernel == "RBF"):
-            prior_kernel = RBFKernel(prior_kernel_params[0], prior_kernel_params[1])
-        elif (prior_kernel == "Matern"):
-            prior_kernel = MaternKernel(prior_kernel_params[0], prior_kernel_params[1], prior_kernel_params[2])
-        elif (prior_kernel == "RQ"):
-            prior_kernel = RationalQuadraticKernel(prior_kernel_params[0], prior_kernel_params[1], prior_kernel_params[2])
-        elif (prior_kernel == "Independent"):
-            prior_kernel = IndependentKernel(prior_kernel_params[0])
+        if prior_kernel is None:
+            self.prior_kernel = IndependentKernel()
+        elif prior_kernel["name"] == "Independent":
+            self.prior_kernel = IndependentKernel(**prior_kernel["params"])
+        elif prior_kernel["name"] == "RBF":
+            self.prior_kernel = RBFKernel(**prior_kernel["params"])
+        elif prior_kernel["name"] == "Matern":
+            self.prior_kernel = MaternKernel(**prior_kernel["params"])
+        elif prior_kernel["name"] == "RQ":
+            self.prior_kernel = RationalQuadraticKernel(**prior_kernel["params"])
         else:
             raise NotImplementedError
 
         # Prior mean and convariance
         self.prior_mu = torch.tensor(0) # shape: ()
-        self.prior_sigma = prior_kernel(self.filter_shape[0], self.filter_shape[1]) # shape: (filter_size, filter_size)
+        self.prior_sigma = self.prior_kernel(self.filter_shape[0], self.filter_shape[1]) # shape: (filter_size, filter_size)
 
         # Precomputing inverse and logdet for KL divergence
         self.prior_sigma_inv = torch.linalg.inv(self.prior_sigma)
         self.prior_sigma_logdet = torch.logdet(self.prior_sigma)
 
         # Setting up variational posteriors
-        if (kernel == "RBF"):
-            self.a = nn.Parameter(log_normal(kernel_init[0], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(log_normal(kernel_init[1], size=self.filter_num)) # learnable
-            self.posterior_kernel = RBFKernel(self.a, self.l)
-        elif (kernel == "Matern"):
-            self.a = nn.Parameter(log_normal(kernel_init[0], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(log_normal(kernel_init[1], size=self.filter_num)) # learnable
-            self.nu = prior_kernel_params[2] # use prior
-            self.posterior_kernel = MaternKernel(self.a, self.l, self.nu)
-        elif (kernel == "RQC"):
-            self.a = nn.Parameter(log_normal(kernel_init[0], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(log_normal(kernel_init[1], size=self.filter_num)) # learnable
-            self.alpha = prior_kernel_params[2] # use prior
-            self.posterior_kernel = RationalQuadraticKernel(self.a, self.l, self.alpha)
-        elif (kernel == "Independent"):
-            self.a = nn.Parameter(log_normal(kernel_init[0], size=(self.filter_size, self.filter_num))) # learnable
+        if kernel is None:
+            self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size))) # learnable
+        if kernel["name"] == "Independent":
+            self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size), **kernel["params_init"]["a"])) # learnable
             self.posterior_kernel = IndependentKernel(self.a)
+        elif kernel["name"] == "RBF":
+            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.posterior_kernel = RBFKernel(self.a, self.l)
+        elif kernel["name"] == "Matern":
+            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.nu = self.prior_kernel.nu # use prior
+            self.posterior_kernel = MaternKernel(self.a, self.l, self.nu)
+        elif kernel["name"] == "RQ":
+            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.alpha = self.prior_kernel.alpha # use prior
+            self.posterior_kernel = RationalQuadraticKernel(self.a, self.l, self.alpha)
         else:
             raise NotImplementedError
 
