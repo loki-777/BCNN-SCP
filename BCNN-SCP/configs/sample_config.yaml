@@ -24,11 +24,11 @@ model:
   num_samples_training: 5 # Number of samples for training, null for mean weights
   num_samples_predict: 5 # Number of samples for prediction, null for mean weights
   kernel: "RBF"
-  kernel_params_init:
-    - ["lognormal", 1, 1]
-    - ["uniform", 0.1, 0.9]
+  kernel_init: # lognormal(mu, sigma, min, max)
+    - [0, 1, 0.01, 1] # a
+    - [0, 1, 0.01, 1] # l
   prior_kernel: "RBF"
-  prior_kernel_params: [100, 0.1] # in the form [a, l, (nu or alpha)]
+  prior_kernel_params: [100, 0.1] # in the form [a, l]
 
 # Training settings
 training:
