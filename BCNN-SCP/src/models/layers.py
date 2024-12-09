@@ -6,7 +6,7 @@ from src.models.kernels import *
 from src.models.losses import *
 
 # For parameter initialization
-def log_normal(size, mu=-1, sigma=0.5, min=0.1, max=1):
+def log_normal(size, mu=0, sigma=0.5, min=0.1, max=3):
     z = torch.randn(size)
     x = torch.exp(mu + sigma * z)
     x = x.clamp(min, max)
