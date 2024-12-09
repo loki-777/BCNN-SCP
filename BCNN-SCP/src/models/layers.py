@@ -28,16 +28,18 @@ class BBBConv2d(pl.LightningModule):
 
         # setting up priors
         if (priors["kernel"] == "RBF"):
-            prior_kernel = RBFCovariance(priors["kernel_params"][0], priors["kernel_params"][1])
+            prior_kernel = RBFKernel(priors["kernel_params"][0], priors["kernel_params"][1])
         elif (priors["kernel"] == "Matern"):
-            prior_kernel = MaternCovariance(priors["kernel_params"][0], priors["kernel_params"][1], priors["kernel_params"][2])
-        elif (priors["kernel"] == "RQC"):
-            prior_kernel = RationalQuadraticCovariance(priors["kernel_params"][0], priors["kernel_params"][1], priors["kernel_params"][2])
+            prior_kernel = MaternKernel(priors["kernel_params"][0], priors["kernel_params"][1], priors["kernel_params"][2])
+        elif (priors["kernel"] == "RQ"):
+            prior_kernel = RationalQuadraticKernel(priors["kernel_params"][0], priors["kernel_params"][1], priors["kernel_params"][2])
+        elif (priors["kernel"] == "Independent"):
+            prior_kernel = IndependentKernel(priors["kernel_params"][0])
         else:
             raise NotImplementedError
 
         # prior mean and convariance
-        self.prior_mu = torch.zeros([]) # shape: ()
+        self.prior_mu = torch.tensor(0) # shape: ()
         self.prior_sigma = prior_kernel(self.filter_shape[0], self.filter_shape[1]) # shape: (filter_size, filter_size)
 
         # precomputing inverse and logdet for KL divergence
@@ -46,24 +48,27 @@ class BBBConv2d(pl.LightningModule):
 
         # setting up variational posteriors
         if (kernel == "RBF"):
-            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
-            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
-            self.posterior_kernel = RBFCovariance(self.a, self.l)
+            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num)) # learnable
+            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num)) # learnable
+            self.posterior_kernel = RBFKernel(self.a, self.l)
         elif (kernel == "Matern"):
-            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
-            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
-            self.nu = nn.Parameter(uniform(0.1, 4, self.filter_num))
-            self.posterior_kernel = MaternCovariance(self.a, self.l, self.nu)
-        elif (kernel == "RQC"):
-            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
-            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num))
-            self.alpha = nn.Parameter(uniform(0.1, 4, self.filter_num))
-            self.posterior_kernel = RationalQuadraticCovariance(self.a, self.l, self.alpha)
+            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num)) # learnable
+            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num)) # learnable
+            self.nu = nn.Parameter(uniform(0.1, 4, self.filter_num)) # learnable
+            self.posterior_kernel = MaternKernel(self.a, self.l, self.nu)
+        elif (kernel == "RQ"):
+            self.a = nn.Parameter(uniform(0.1, 0.2, self.filter_num)) # learnable
+            self.l = nn.Parameter(uniform(0.1, 0.2, self.filter_num)) # learnable
+            self.alpha = nn.Parameter(uniform(0.1, 4, self.filter_num)) # learnable
+            self.posterior_kernel = RationalQuadraticKernel(self.a, self.l, self.alpha)
+        elif (kernel == "Independent"):
+            self.a = nn.Parameter(uniform(0.1, 0.2, (self.filter_size, self.filter_num))) # learnable
+            self.posterior_kernel = IndependentKernel(self.a)
         else:
             raise NotImplementedError
 
         # variational mean
-        self.W_mu = nn.Parameter(torch.randn(self.filter_num, self.filter_size)) # shape: (filter_num, filter_size)
+        self.W_mu = nn.Parameter(torch.randn(self.filter_num, self.filter_size)) # learnable, shape: (filter_num, filter_size)
 
     # variational covariance
     @property
