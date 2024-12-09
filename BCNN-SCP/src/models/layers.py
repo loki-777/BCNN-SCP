@@ -5,40 +5,16 @@ import torch.nn.functional as F
 from src.models.kernels import *
 from src.models.losses import *
 
-# Define distributions
-def uniform(a, b, size):
-    return a + (b - a) * torch.rand(size)
+# For parameter initialization
+def log_normal(size, mu=-1, sigma=0.5, min=0.1, max=1):
+    z = torch.randn(size)
+    x = torch.exp(mu + sigma * z)
+    x = x.clamp(min, max)
+    return x
 
-def log_normal(mu, sigma, size):
-    dist = torch.distributions.LogNormal(mu, sigma)
-    return dist.sample(size)
-
-def gamma_dist(alpha, beta, size):
-    dist = torch.distributions.Gamma(alpha, beta)
-    return dist.sample(size)
-
-def kaiming_normal(size):
-    samples = torch.empty(size)
-    nn.init.kaiming_normal_(samples)
-    return samples
-
-# Helper to handle different distribution initializations
-def parameter_init(kernel_param_init, size):
-    if kernel_param_init[0] == "uniform":
-        return uniform(kernel_param_init[1], kernel_param_init[2], size)  # returns uniform(a, b, size)
-    elif kernel_param_init[0] == "log_normal":
-        return log_normal(kernel_param_init[1], kernel_param_init[2], size)  # returns log_normal(mu, sigma, size)
-    elif kernel_param_init[0] == "gamma_dist":
-        return gamma_dist(kernel_param_init[1], kernel_param_init[2], size)  # returns gamma_dist(alpha, beta, size)
-    else:
-        raise NotImplementedError
-
-# priors can be provided as input, if not provided, (1,1) RBF Kernel is used by default
-# kernel can be provided, RBF used by default
 class BBBConv2d(pl.LightningModule):
-    def __init__(self, in_channels, out_channels, filter_size, priors={"kernel": "RBF", "kernel_params": [1, 1]},
-                 stride=1, padding=0, dilation=1, 
-                 kernel="RBF", kernel_params_init=[["lognormal", 1, 1], ["uniform", 0.1, 0.9]]):
+    def __init__(self, in_channels, out_channels, filter_size=3, stride=1, padding=1, dilation=1,
+                 prior_kernel=None, kernel=None):
 
         super(BBBConv2d, self).__init__()
         self.in_channels = in_channels
@@ -50,53 +26,56 @@ class BBBConv2d(pl.LightningModule):
         self.padding = padding
         self.dilation = dilation
         self.groups = 1
-        self.kernel = kernel
 
-        # setting up priors
-        if (priors["kernel"] == "RBF"):
-            prior_kernel = RBFKernel(priors["kernel_params"][0], priors["kernel_params"][1])
-        elif (priors["kernel"] == "Matern"):
-            prior_kernel = MaternKernel(priors["kernel_params"][0], priors["kernel_params"][1], priors["kernel_params"][2])
-        elif (priors["kernel"] == "RQ"):
-            prior_kernel = RationalQuadraticKernel(priors["kernel_params"][0], priors["kernel_params"][1], priors["kernel_params"][2])
-        elif (priors["kernel"] == "Independent"):
-            prior_kernel = IndependentKernel(priors["kernel_params"][0])
+        # Setting up priors
+        if prior_kernel is None:
+            self.prior_kernel = IndependentKernel()
+        elif prior_kernel["name"] == "Independent":
+            self.prior_kernel = IndependentKernel(**prior_kernel["params"])
+        elif prior_kernel["name"] == "RBF":
+            self.prior_kernel = RBFKernel(**prior_kernel["params"])
+        elif prior_kernel["name"] == "Matern":
+            self.prior_kernel = MaternKernel(**prior_kernel["params"])
+        elif prior_kernel["name"] == "RQ":
+            self.prior_kernel = RationalQuadraticKernel(**prior_kernel["params"])
         else:
             raise NotImplementedError
 
-        # prior mean and convariance
+        # Prior mean and convariance
         self.prior_mu = torch.tensor(0) # shape: ()
-        self.prior_sigma = prior_kernel(self.filter_shape[0], self.filter_shape[1]) # shape: (filter_size, filter_size)
+        self.prior_sigma = self.prior_kernel(self.filter_shape[0], self.filter_shape[1]) # shape: (filter_size, filter_size)
 
-        # precomputing inverse and logdet for KL divergence
+        # Precomputing inverse and logdet for KL divergence
         self.prior_sigma_inv = torch.linalg.inv(self.prior_sigma)
         self.prior_sigma_logdet = torch.logdet(self.prior_sigma)
-        
-        # setting up variational posteriors
-        if (kernel == "RBF"):
-            self.a = nn.Parameter(parameter_init(kernel_params_init[0], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(parameter_init(kernel_params_init[1], size=self.filter_num)) # learnable
-            self.posterior_kernel = RBFKernel(self.a, self.l)
-        elif (kernel == "Matern"):
-            self.a = nn.Parameter(parameter_init(kernel_params_init[0], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(parameter_init(kernel_params_init[1], size=self.filter_num)) # learnable
-            self.nu = priors["kernel_params"][2] # use prior
-            self.posterior_kernel = MaternKernel(self.a, self.l, self.nu)
-        elif (kernel == "RQC"):
-            self.a = nn.Parameter(parameter_init(kernel_params_init[0], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(parameter_init(kernel_params_init[1], size=self.filter_num)) # learnable
-            self.alpha = priors["kernel_params"][2] # use prior
-            self.posterior_kernel = RationalQuadraticKernel(self.a, self.l, self.alpha)
-        elif (kernel == "Independent"):
-            self.a = nn.Parameter(parameter_init(kernel_params_init[0], size=(self.filter_size, self.filter_num))) # learnable
+
+        # Setting up variational posteriors
+        if kernel is None:
+            self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size))) # learnable
+        if kernel["name"] == "Independent":
+            self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size), **kernel["params_init"]["a"])) # learnable
             self.posterior_kernel = IndependentKernel(self.a)
+        elif kernel["name"] == "RBF":
+            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.posterior_kernel = RBFKernel(self.a, self.l)
+        elif kernel["name"] == "Matern":
+            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.nu = self.prior_kernel.nu # use prior
+            self.posterior_kernel = MaternKernel(self.a, self.l, self.nu)
+        elif kernel["name"] == "RQ":
+            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.alpha = self.prior_kernel.alpha # use prior
+            self.posterior_kernel = RationalQuadraticKernel(self.a, self.l, self.alpha)
         else:
             raise NotImplementedError
 
-        # variational mean
-        self.W_mu = nn.Parameter(kaiming_normal((self.filter_num, self.filter_size))) # learnable, shape: (filter_num, filter_size)
+        # Variational mean
+        self.W_mu = nn.Parameter(torch.randn((self.filter_num, self.filter_size))) # learnable, shape: (filter_num, filter_size)
 
-    # variational covariance
+    # Variational covariance
     @property
     def W_sigma(self):
         return self.posterior_kernel(self.filter_shape[0], self.filter_shape[1], device=self.device) # shape: (filter_num, filter_size, filter_size)
@@ -111,13 +90,13 @@ class BBBConv2d(pl.LightningModule):
         # If sampling, sample weights and forward for each sample
         # (B,S,C,H,W)
         if inputs.dim() == 5:
-            # number of samples
+            # Number of samples
             num_samples = inputs.shape[1]
 
-            # sample weights from W_mu and W_sigma, shape: (num_samples, filter_num, filter_size)
+            # Sample weights from W_mu and W_sigma, shape: (num_samples, filter_num, filter_size)
             sampled_weights = self.sample_weights(num_samples)
 
-            # forward for each sample
+            # Forward for each sample
             outputs = []
             for s in range(num_samples):
                 weight = sampled_weights[s].view(self.out_channels, self.in_channels, self.filter_shape[0], self.filter_shape[1])

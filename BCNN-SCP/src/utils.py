@@ -5,14 +5,12 @@ from torch.utils.data import DataLoader, random_split
 
 def get_model(config):
     if config["model"]["model_name"] == "BCNN":
-        return BCNN(config["model"]["prior_kernel"],
-                    config["model"]["prior_kernel_params"],
-                    out_channels_conv1=config["model"]["out_channels_conv1"],
+        return BCNN(out_channels_conv1=config["model"]["out_channels_conv1"],
                     out_channels_conv2=config["model"]["out_channels_conv2"],
                     num_samples_training=config["model"]["num_samples_training"],
                     num_samples_predict=config["model"]["num_samples_predict"],
-                    kernel=config["model"]["kernel"],
-                    kernel_params_init=config["model"]["kernel_params_init"])
+                    prior_kernel=config["model"]["prior_kernel"],
+                    kernel=config["model"]["kernel"])
     elif config["model"]["model_name"] == "CNN":
         return CNN(out_channels_conv1=config["model"]["out_channels_conv1"],
                    out_channels_conv2=config["model"]["out_channels_conv2"])
