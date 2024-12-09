@@ -5,17 +5,19 @@ import pytorch_lightning as pl
 from src.models.layers import *
 
 class BCNN(pl.LightningModule):
-    def __init__(self, prior_kernel, prior_kernel_params,
+    def __init__(self,
                  out_channels_conv1=16, out_channels_conv2=32,
-                 num_samples_training=1, num_samples_predict=1,
-                 kernel="RBF", kernel_init=[[0, 1, 0.01, 1], [0, 1, 0.01, 1]]):
+                 num_samples_training=None, num_samples_predict=None,
+                 prior_kernel=None, prior_kernel_params=None,
+                 kernel=None, kernel_init=None):
         super(BCNN, self).__init__()
-        priors = {
-            "kernel": prior_kernel,
-            "kernel_params": prior_kernel_params
-        }
-        self.conv1 = BBBConv2d(1, out_channels_conv1, filter_size=3, stride=1, padding=1, kernel=kernel, kernel_init=kernel_init, priors=priors)
-        self.conv2 = BBBConv2d(out_channels_conv1, out_channels_conv2, filter_size=3, stride=1, padding=1, kernel=kernel, kernel_init=kernel_init, priors=priors)
+
+        self.conv1 = BBBConv2d(1, out_channels_conv1, filter_size=3,
+                               prior_kernel=prior_kernel, prior_kernel_params=prior_kernel_params,
+                               kernel=kernel, kernel_init=kernel_init)
+        self.conv2 = BBBConv2d(out_channels_conv1, out_channels_conv2, filter_size=3,
+                               prior_kernel=prior_kernel, prior_kernel_params=prior_kernel_params,
+                               kernel=kernel, kernel_init=kernel_init)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.fc1 = nn.Linear(out_channels_conv2 * 14 * 14, 128)
         self.fc2 = nn.Linear(128, 10)
