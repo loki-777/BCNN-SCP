@@ -1,8 +1,10 @@
 import torch
 import pytorch_lightning as pl
 import wandb
+from pytorch_lightning.loggers import WandbLogger
 
 from src.main import LightningModule
+from .utils import *
 
 import os, argparse, yaml
 
@@ -22,6 +24,45 @@ if __name__ == "__main__":
 
     with open(args.file_path, "r") as file:
         config = yaml.safe_load(file)
+    
+    sweep_config = {
+        'method': 'bayes',  # Choose search strategy: grid, random, or bayes
+        'metric': {
+            'name': 'val_loss',  # Metric to optimize
+            'goal': 'minimize'   # Minimize or maximize the metric
+        },
+        'parameters': {
+            'prior_a': {
+                'values': [16, 32, 64]
+            },
+            'prior_l': {
+            },
+            'kernel_a_mu': {
+                'values': [0.1, 0.2, 0.3]
+            },
+            'kernel_a_sigma': {
+                'values': [0.1, 0.2, 0.3]
+            },
+            'kernel_a_min': {
+                'values': [0.1, 0.2, 0.3]
+            },
+            'kernel_a_max': {
+                'values': [0.1, 0.2, 0.3]
+            },
+            'kernel_l_mu': {
+                'values': [0.1, 0.2, 0.3]
+            },
+            'kernel_l_sigma': {
+                'values': [0.1, 0.2, 0.3]
+            },
+            'kernel_l_min': {
+                'values': [0.1, 0.2, 0.3]
+            },
+            'kernel_l_max': {
+                'values': [0.1, 0.2, 0.3]
+            }
+        }
+    }
 
     num_gpus = 0
     if torch.cuda.is_available():
@@ -39,7 +80,6 @@ if __name__ == "__main__":
 
     wandb_logger = WandbLogger(
         project=config["project_name"],
-        name=config["experiment_name"],
         log_model=False
     )
     wandb_logger.experiment.config.update(config)
@@ -51,22 +91,23 @@ if __name__ == "__main__":
         devices=num_gpus if use_gpu else "auto",
         # How many epochs to train for if no patience is set
         max_epochs=config["training"]["epochs"],
-        callbacks=[
-            ModelCheckpoint(
-                dirpath=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),
-                save_weights_only=True, mode="max", monitor=config["logging"]["monitor_metric"],
-            ),  # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
-            LearningRateMonitor("epoch"),
-        ],
         logger=wandb_logger
     )
 
-    if config["action"] == "train":
-        model = LightningModule(config)
-        trainer.fit(model, train_loader, val_loader)
-    else:
-        model = LightningModule.load_from_checkpoint(
-        checkpoint_path=config["test"]["checkpoint_path"],
-        config=config)
-
-        trainer.test(model, test_loader)
+    def train_model(config=None):
+        with wandb.init(config=config):
+            config = wandb.config
+            
+            # Update hyperparameters in your Lightning Module
+            model = LightningModule(learning_rate=config.learning_rate, dropout=config.dropout)
+            
+            # Set up DataLoaders
+            train_loader = ...
+            val_loader = ...
+            
+            trainer = pl.Trainer(
+                max_epochs=10,
+                logger=wandb_logger,
+                gpus=1
+            )
+            trainer.fit(model, train_loader, val_loader)
