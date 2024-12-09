@@ -6,7 +6,8 @@ from src.models.kernels import *
 from src.models.losses import *
 
 # initialize parameters
-def log_normal(mu, sigma, x_min, x_max, size):
+def log_normal(params, size):
+    mu, sigma, x_min, x_max = params
     z = torch.randn(size)
     x = torch.exp(mu + sigma * z)
     x = x.clamp(x_min, x_max)
@@ -52,21 +53,21 @@ class BBBConv2d(pl.LightningModule):
 
         # setting up variational posteriors
         if (kernel == "RBF"):
-            self.a = nn.Parameter(log_normal(kernel_init[0][0], kernel_init[0][1], kernel_init[0][2], kernel_init[0][3], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(log_normal(kernel_init[1][0], kernel_init[1][1], kernel_init[1][2], kernel_init[1][3], size=self.filter_num)) # learnable
+            self.a = nn.Parameter(log_normal(kernel_init[0], size=self.filter_num)) # learnable
+            self.l = nn.Parameter(log_normal(kernel_init[1], size=self.filter_num)) # learnable
             self.posterior_kernel = RBFKernel(self.a, self.l)
         elif (kernel == "Matern"):
-            self.a = nn.Parameter(log_normal(kernel_init[0][0], kernel_init[0][1], kernel_init[0][2], kernel_init[0][3], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(log_normal(kernel_init[1][0], kernel_init[1][1], kernel_init[1][2], kernel_init[1][3], size=self.filter_num)) # learnable
+            self.a = nn.Parameter(log_normal(kernel_init[0], size=self.filter_num)) # learnable
+            self.l = nn.Parameter(log_normal(kernel_init[1], size=self.filter_num)) # learnable
             self.nu = priors["kernel_params"][2] # use prior
             self.posterior_kernel = MaternKernel(self.a, self.l, self.nu)
         elif (kernel == "RQC"):
-            self.a = nn.Parameter(log_normal(kernel_init[0][0], kernel_init[0][1], kernel_init[0][2], kernel_init[0][3], size=self.filter_num)) # learnable
-            self.l = nn.Parameter(log_normal(kernel_init[1][0], kernel_init[1][1], kernel_init[1][2], kernel_init[1][3], size=self.filter_num)) # learnable
+            self.a = nn.Parameter(log_normal(kernel_init[0], size=self.filter_num)) # learnable
+            self.l = nn.Parameter(log_normal(kernel_init[1], size=self.filter_num)) # learnable
             self.alpha = priors["kernel_params"][2] # use prior
             self.posterior_kernel = RationalQuadraticKernel(self.a, self.l, self.alpha)
         elif (kernel == "Independent"):
-            self.a = nn.Parameter(log_normal(kernel_init[0][0], kernel_init[0][1], kernel_init[0][2], kernel_init[0][3], size=(self.filter_size, self.filter_num))) # learnable
+            self.a = nn.Parameter(log_normal(kernel_init[0], size=(self.filter_size, self.filter_num))) # learnable
             self.posterior_kernel = IndependentKernel(self.a)
         else:
             raise NotImplementedError
