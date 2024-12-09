@@ -51,7 +51,24 @@ class LightningModule(pl.LightningModule):
         imgs, labels = batch
         preds = self.model(imgs)
         logits = preds["logits"]
+        logits_copy = logits.clone()
         kl_loss = preds["kl_loss"]
+
+        if logits_copy.dim() == 3:
+            logits_copy = logits_copy.softmax(dim=-1) # (batch_size, num_samples, num_classes)
+            logits_copy = logits_copy.mean(dim=1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes)
+
+        logits_copy = logits_copy.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
+
+        if "accuracy" in self.config["training"]["metrics"]:
+            self.log("train_accuracy", self.accuracy_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "precision" in self.config["training"]["metrics"]:
+            self.log("train_precision", self.precision_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "recall" in self.config["training"]["metrics"]:
+            self.log("train_recall", self.recall_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "f1" in self.config["training"]["metrics"]:
+            self.log("train_f1", self.f1_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+
 
         # (batch_size, num_samples, num_classes)
         if logits.dim() == 3:
