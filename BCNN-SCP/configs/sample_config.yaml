@@ -4,6 +4,7 @@
 project_name: "BCNN-SCP"
 experiment_name: "BCNN RBF(100, 0.1)"
 device: "cpu" # if gpu, then all available GPUs are used
+action: "train" # action can be "train" or "test"
 
 # Data settings
 data:
@@ -21,7 +22,7 @@ model:
   out_channels_conv1: 16 # Number of output channels for the first convolutional layer
   out_channels_conv2: 32 # Number of output channels for the second convolutional layer
   num_samples_training: 5 # Number of samples for training, null for mean weights
-  num_samples_predict: null # Number of samples for prediction, null for mean weights
+  num_samples_predict: 5 # Number of samples for prediction, null for mean weights
   kernel: "RBF"
   kernel_params_init:
     - ["lognormal", 1, 1]
@@ -33,7 +34,7 @@ model:
 training:
   epochs: 20 # Number of training epochs
   learning_rate: 0.001 # Learning rate
-  weight_decay: 0.0001 # Weight decay (L2 regularization)
+  weight_decay: 0.0 # Weight decay (L2 regularization)
   optimizer: "Adam" # Optimizer (e.g., Adam, SGD)
   # scheduler: # Learning rate scheduler settings
   #   gamma: 0.1 # Gamma for StepLR
@@ -45,6 +46,7 @@ validation:
 # Testing settings
 testing:
   metrics: ["accuracy", "f1"] # Metrics for testing
+  checkpoint_path: "../checkpoints/"
 
 # Logging settings
 logging:

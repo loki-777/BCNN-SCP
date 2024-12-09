@@ -3,7 +3,7 @@ import torch
 from scipy.special import gamma, kv
 
 
-class SpatialCovariance:
+class SpatialKernel:
     def __call__(self, h, w, device=None):
         ys = torch.linspace(0, 1, h, device=device)
         xs = torch.linspace(0, 1, w, device=device)
@@ -28,7 +28,7 @@ class SpatialCovariance:
         raise NotImplementedError
 
 
-class RBFCovariance(SpatialCovariance):
+class RBFKernel(SpatialKernel):
     def __init__(self, a, l):
         self.a = a
         self.l = l
@@ -37,7 +37,7 @@ class RBFCovariance(SpatialCovariance):
         return self.a**2 * torch.exp(-(dists**2) / (2 * self.l**2))
 
 
-class MaternCovariance(SpatialCovariance):
+class MaternKernel(SpatialKernel):
     def __init__(self, a, l, nu):
         self.a = a
         self.l = l
@@ -52,7 +52,7 @@ class MaternCovariance(SpatialCovariance):
         )
 
 
-class RationalQuadraticCovariance(SpatialCovariance):
+class RationalQuadraticKernel(SpatialKernel):
     def __init__(self, a, l, alpha):
         self.a = a
         self.l = l
@@ -62,10 +62,21 @@ class RationalQuadraticCovariance(SpatialCovariance):
         return self.a**2 * (1 + dists**2 / (2 * self.alpha * self.l**2)) ** (-self.alpha)
 
 
+class IndependentKernel(SpatialKernel):
+    def __init__(self, a):
+        self.a = a # () or (h*w, d)
+
+    def kernel(self, dists):
+        eye = torch.eye(dists.shape[0], device=dists.device) # (h*w, h*w)
+        # Expand dimension for broadcasting
+        eye = eye.unsqueeze(-1) # (h*w, h*w, 1)
+        return self.a**2 * eye # (h*w, h*w, 1) or (h*w, h*w, d)
+
+
 if __name__ == "__main__":
-    # Visualize RBF covariance matrix
+    # Visualize RBF covariance
     h, w = 3, 3
-    covar = RBFCovariance(a=1, l=1)(h, w)
+    covar = RBFKernel(a=1, l=1)(h, w)
     covar_p1 = covar[0, :].reshape(h, w)
     plt.imshow(covar_p1)
     plt.yticks(range(h))
@@ -77,7 +88,7 @@ if __name__ == "__main__":
     # Visualize RBF kernel
     dists = torch.linspace(-5, 5, 100)
     for a, l in [(1, 1), (1, 2), (2, 1)]:
-        covars = RBFCovariance(a, l).kernel(dists.abs())
+        covars = RBFKernel(a, l).kernel(dists.abs())
         plt.plot(dists, covars, label=f"RBF$(a={a}, l={l})$")
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
@@ -88,7 +99,7 @@ if __name__ == "__main__":
     # Visualize Matern kernel
     dists = torch.linspace(-5, 5, 100)
     for a, l, nu in [(1, 1, 1.5), (1, 2, 1.5), (2, 1, 1.5), (1, 1, 2.5)]:
-        covars = MaternCovariance(a, l, nu).kernel(dists.abs())
+        covars = MaternKernel(a, l, nu).kernel(dists.abs())
         plt.plot(dists, covars, label=f"Matérn$(a={a}, l={l}, \\nu={nu})$")
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
@@ -99,7 +110,7 @@ if __name__ == "__main__":
     # Visualize Rational Quadratic kernel
     dists = torch.linspace(-5, 5, 100)
     for a, l, alpha in [(1, 1, 1), (1, 2, 1), (2, 1, 1), (1, 1, 2)]:
-        covars = RationalQuadraticCovariance(a, l, alpha).kernel(dists.abs())
+        covars = RationalQuadraticKernel(a, l, alpha).kernel(dists.abs())
         plt.plot(dists, covars, label=f"RQ$(a={a}, l={l}, \\alpha={alpha})$")
     plt.xlabel("$p_1 - p_2$")
     plt.legend()

@@ -9,6 +9,7 @@ from pytorch_lightning.loggers import WandbLogger
 import torch.nn as nn
 from torchmetrics import Accuracy, Precision, Recall, F1Score
 import torch.optim as optim
+import wandb
 
 from .utils import *
 
@@ -96,24 +97,24 @@ class LightningModule(pl.LightningModule):
             self.log("val_f1", self.f1_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
+        # assumes 1 batch size
         imgs, labels = batch
         preds = self.model(imgs)["logits"]
 
         # (batch_size, num_samples, num_classes)
         if preds.dim() == 3:
             preds = preds.softmax(dim=-1) # (batch_size, num_samples, num_classes)
-            preds = preds.mean(dim=1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes)
-
+            preds = preds.mean(dim=1)
         preds = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
 
-        if "accuracy" in self.config["validation"]["metrics"]:
-            self.log("val_accuracy", self.accuracy_metric(preds, labels))
-        if "precision" in self.config["validation"]["metrics"]:
-            self.log("val_precision", self.precision_metric(preds, labels))
-        if "recall" in self.config["validation"]["metrics"]:
-            self.log("val_recall", self.recall_metric(preds, labels))
-        if "f1" in self.config["validation"]["metrics"]:
-            self.log("val_f1", self.f1_metric(preds, labels))
+        if "accuracy" in self.config["testing"]["metrics"]:
+            self.log("test_accuracy", self.accuracy_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "precision" in self.config["testing"]["metrics"]:
+            self.log("test_precicsion", self.precision_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "recall" in self.config["testing"]["metrics"]:
+            self.log("test_recall", self.recall_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "f1" in self.config["testing"]["metrics"]:
+            self.log("test_f1", self.f1_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
     
     def predict_single(self, x):
         self.eval()  # Ensure the model is in evaluation mode
@@ -182,7 +183,12 @@ if __name__ == "__main__":
         logger=wandb_logger
     )
 
-    model = LightningModule(config)
-    print(model)
-    
-    trainer.fit(model, train_loader, val_loader)
+    if config["action"] == "train":
+        model = LightningModule(config)
+        trainer.fit(model, train_loader, val_loader)
+    else:
+        model = LightningModule.load_from_checkpoint(
+        checkpoint_path=config["test"]["checkpoint_path"],
+        config=config)
+
+        trainer.test(model, test_loader)
