@@ -132,7 +132,7 @@ class LightningModule(pl.LightningModule):
             self.log("test_recall", self.recall_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "f1" in self.config["testing"]["metrics"]:
             self.log("test_f1", self.f1_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
-    
+
     def predict_single(self, x):
         self.eval()  # Ensure the model is in evaluation mode
         with torch.no_grad():  # Disable gradient computation
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         trainer.fit(model, train_loader, val_loader)
     else:
         model = LightningModule.load_from_checkpoint(
-        checkpoint_path=config["test"]["checkpoint_path"],
+        checkpoint_path=config["testing"]["checkpoint_path"],
         config=config)
 
         trainer.test(model, test_loader)
