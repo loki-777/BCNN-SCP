@@ -33,6 +33,7 @@ training:
   learning_rate: 0.001 # Learning rate
   weight_decay: 0.0 # Weight decay (L2 regularization)
   optimizer: "Adam" # Optimizer (e.g., Adam, SGD)
+  metrics: ["accuracy", "f1"]
   # scheduler: # Learning rate scheduler settings
   #   gamma: 0.1 # Gamma for StepLR
 
