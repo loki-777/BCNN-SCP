@@ -4,7 +4,7 @@
 project_name: "BCNN-SCP"
 experiment_name: "BCNN RBF(100, 1)"
 device: "cpu" # if gpu, then all available GPUs are used
-action: "train" # action can be "train" or "test"
+action: "train" # action can be "train" or "test" or "train and test"
 
 # Data settings
 data:
@@ -65,6 +65,7 @@ testing:
 logging:
   save_name: "BCNN_MNIST"
   checkpoint_dir: "../checkpoints" # Directory to save model checkpoints
-  save_top_k: 3 # Number of best models to save
-  monitor_metric: "val_accuracy" # Metric to monitor for saving the best model
-  mode: "max" # "max" for maximizing the metric, "min" for minimizing
+  save_top_k: 1 # Number of best models to save
+  monitor_metric: "val_loss" # Metric to monitor for saving the best model
+  mode: "min" # "max" for maximizing the metric, "min" for minimizing
+  delete_on_completion: true
