@@ -26,41 +26,20 @@ if __name__ == "__main__":
         config = yaml.safe_load(file)
     
     sweep_config = {
-        'method': 'bayes',  # Choose search strategy: grid, random, or bayes
-        'metric': {
-            'name': 'val_loss',  # Metric to optimize
-            'goal': 'minimize'   # Minimize or maximize the metric
+        "method": 'bayes',
+        "metric": {
+            'name': 'val_loss',
+            'goal': 'minimize'
         },
-        'parameters': {
+        "parameters": {
             'prior_a': {
-                'values': [16, 32, 64]
+                'min': 0.1,    # Fixed: Added quotes to min/max
+                'max': 1000.0
             },
             'prior_l': {
+                'min': 0.1,    # Fixed: Added quotes to min/max
+                'max': 3.0
             },
-            'kernel_a_mu': {
-                'values': [0.1, 0.2, 0.3]
-            },
-            'kernel_a_sigma': {
-                'values': [0.1, 0.2, 0.3]
-            },
-            'kernel_a_min': {
-                'values': [0.1, 0.2, 0.3]
-            },
-            'kernel_a_max': {
-                'values': [0.1, 0.2, 0.3]
-            },
-            'kernel_l_mu': {
-                'values': [0.1, 0.2, 0.3]
-            },
-            'kernel_l_sigma': {
-                'values': [0.1, 0.2, 0.3]
-            },
-            'kernel_l_min': {
-                'values': [0.1, 0.2, 0.3]
-            },
-            'kernel_l_max': {
-                'values': [0.1, 0.2, 0.3]
-            }
         }
     }
 
@@ -72,9 +51,6 @@ if __name__ == "__main__":
         print("GPU is not available.")
 
     use_gpu = True if config["device"] == "gpu" else False
-
-    # prep data
-    train_loader, val_loader, test_loader = get_dataloaders(config)
 
     pl.seed_everything(42)
 
@@ -95,19 +71,18 @@ if __name__ == "__main__":
     )
 
     def train_model(config=None):
-        with wandb.init(config=config):
-            config = wandb.config
+        with wandb.init():
+            # Get the sweep config from wandb, not from the input parameter
+            sweep_config = wandb.config
             
             # Update hyperparameters in your Lightning Module
-            model = LightningModule(learning_rate=config.learning_rate, dropout=config.dropout)
-            
-            # Set up DataLoaders
-            train_loader = ...
-            val_loader = ...
-            
-            trainer = pl.Trainer(
-                max_epochs=10,
-                logger=wandb_logger,
-                gpus=1
-            )
+            config["model"]["prior_kernel"]["params"]["a"] = sweep_config.prior_a  # Fixed: Access parameters directly
+            config["model"]["prior_kernel"]["params"]["l"] = sweep_config.prior_l  # Fixed: Access parameters directly
+            model = LightningModule(config)
+
+            train_loader, val_loader, _ = get_dataloaders(config)
             trainer.fit(model, train_loader, val_loader)
+    
+    sweep_id = wandb.sweep(sweep_config, project=config["project_name"])
+    # Start the sweep agent
+    wandb.agent(sweep_id, train_model)  
