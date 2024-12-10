@@ -1,18 +1,26 @@
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import pytorch_lightning as pl
+
 from src.models.layers import *
+
+def get_padding(kernel_size, stride):
+    return (kernel_size - stride) // 2
 
 class BCNN(pl.LightningModule):
     def __init__(self,
                  out_channels_conv1=16, out_channels_conv2=32,
+                 filter_size_conv1=3, filter_size_conv2=3,
                  num_samples_training=None, num_samples_predict=None,
                  prior_kernel=None, kernel=None):
         super(BCNN, self).__init__()
 
-        self.conv1 = BBBConv2d(1, out_channels_conv1, prior_kernel=prior_kernel, kernel=kernel)
-        self.conv2 = BBBConv2d(out_channels_conv1, out_channels_conv2, prior_kernel=prior_kernel, kernel=kernel)
+        self.conv1 = BBBConv2d(1, out_channels_conv1,
+                               filter_size=filter_size_conv1, padding=get_padding(filter_size_conv1, 1),
+                               prior_kernel=prior_kernel, kernel=kernel)
+        self.conv2 = BBBConv2d(out_channels_conv1, out_channels_conv2,
+                               filter_size=filter_size_conv2, padding=get_padding(filter_size_conv2, 1),
+                               prior_kernel=prior_kernel, kernel=kernel)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.fc1 = nn.Linear(out_channels_conv2 * 14 * 14, 128)
         self.fc2 = nn.Linear(128, 10)
@@ -58,10 +66,10 @@ class BCNN(pl.LightningModule):
         }
 
 class CNN(pl.LightningModule):
-    def __init__(self, out_channels_conv1=16, out_channels_conv2=32):
+    def __init__(self, out_channels_conv1=16, out_channels_conv2=32, filter_size_conv1=3, filter_size_conv2=3):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, out_channels_conv1, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(out_channels_conv1, out_channels_conv2, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(1, out_channels_conv1, kernel_size=filter_size_conv1, stride=1, padding=get_padding(filter_size_conv1, 1))
+        self.conv2 = nn.Conv2d(out_channels_conv1, out_channels_conv2, kernel_size=filter_size_conv2, stride=1, padding=get_padding(filter_size_conv2, 1))
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.fc1 = nn.Linear(out_channels_conv2 * 14 * 14, 128)
         self.fc2 = nn.Linear(128, 10)

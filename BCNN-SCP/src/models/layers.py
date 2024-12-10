@@ -53,7 +53,7 @@ class BBBConv2d(pl.LightningModule):
         if kernel is None:
             self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size))) # learnable
             self.posterior_kernel = IndependentKernel(self.a)
-        if kernel["name"] == "Independent":
+        elif kernel["name"] == "Independent":
             self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size), **kernel["params_init"]["a"])) # learnable
             self.posterior_kernel = IndependentKernel(self.a)
         elif kernel["name"] == "RBF":
