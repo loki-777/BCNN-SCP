@@ -7,13 +7,18 @@ def get_model(config):
     if config["model"]["model_name"] == "BCNN":
         return BCNN(out_channels_conv1=config["model"]["out_channels_conv1"],
                     out_channels_conv2=config["model"]["out_channels_conv2"],
+                    filter_size_conv1=config["model"]["filter_size_conv1"],
+                    filter_size_conv2=config["model"]["filter_size_conv2"],
                     num_samples_training=config["model"]["num_samples_training"],
                     num_samples_predict=config["model"]["num_samples_predict"],
                     prior_kernel=config["model"]["prior_kernel"],
                     kernel=config["model"]["kernel"])
     elif config["model"]["model_name"] == "CNN":
         return CNN(out_channels_conv1=config["model"]["out_channels_conv1"],
-                   out_channels_conv2=config["model"]["out_channels_conv2"])
+                   out_channels_conv2=config["model"]["out_channels_conv2"],
+                   filter_size_conv1=config["model"]["filter_size_conv1"],
+                   filter_size_conv2=config["model"]["filter_size_conv2"])
+
 
 
 def get_dataloaders(config):

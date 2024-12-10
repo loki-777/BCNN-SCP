@@ -21,6 +21,8 @@ model:
   model_name: "BCNN"
   out_channels_conv1: 16 # Number of output channels for the first convolutional layer
   out_channels_conv2: 32 # Number of output channels for the second convolutional layer
+  filter_size_conv1: 3 # Filter size for the first convolutional layer
+  filter_size_conv2: 3 # Filter size for the second convolutional layer
   num_samples_training: 5 # Number of samples for training, null for mean weights
   num_samples_predict: 5 # Number of samples for prediction, null for mean weights
   prior_kernel:
