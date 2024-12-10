@@ -110,6 +110,7 @@ class BBBConv2d(pl.LightningModule):
             return F.conv2d(inputs, weight, None, self.stride, self.padding, self.dilation, self.groups)
 
     def kl_loss(self):
+        self.to(self.device)
         return KL_DIV(self.prior_mu, self.prior_sigma_inv, self.prior_sigma_logdet, self.W_mu, self.W_sigma)
 
     def sample_weights(self, num_samples):
