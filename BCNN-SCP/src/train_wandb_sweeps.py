@@ -4,7 +4,7 @@ import wandb
 from pytorch_lightning.loggers import WandbLogger
 
 from src.main import LightningModule
-from .utils import *
+from src.utils import *
 
 import os, argparse, yaml
 
@@ -58,7 +58,6 @@ if __name__ == "__main__":
         project=config["project_name"],
         log_model=False
     )
-    wandb_logger.experiment.config.update(config)
 
     trainer = pl.Trainer(
         default_root_dir=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),  # Where to save models
@@ -81,6 +80,22 @@ if __name__ == "__main__":
             model = LightningModule(config)
 
             train_loader, val_loader, _ = get_dataloaders(config)
+
+            wandb_logger = WandbLogger(
+                project=config["project_name"],
+                log_model=False
+            )
+
+            trainer = pl.Trainer(
+                default_root_dir=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),  # Where to save models
+                # We run on a single GPU (if possible)
+                accelerator=config["device"],
+                devices=num_gpus if use_gpu else "auto",
+                # How many epochs to train for if no patience is set
+                max_epochs=config["training"]["epochs"],
+                logger=wandb_logger
+            )
+
             trainer.fit(model, train_loader, val_loader)
     
     sweep_id = wandb.sweep(sweep_config, project=config["project_name"])

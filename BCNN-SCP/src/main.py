@@ -1,5 +1,5 @@
 
-import sys, os
+import sys, os, glob, shutil
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 import pytorch_lightning as pl
@@ -153,6 +153,11 @@ if __name__ == "__main__":
         type=str,
         help="Config file path"
     )
+
+    # Optional arguments for prior_a and prior_l
+    parser.add_argument("-a", "--prior_a", type=float, help="outputscale", required=False, default=100.0)
+    parser.add_argument("-l", "--prior_l", type=float, help="lengthscale", required=False, default=1.0)
+
     args = parser.parse_args()
 
     if not os.path.isfile(args.file_path):
@@ -161,6 +166,10 @@ if __name__ == "__main__":
 
     with open(args.file_path, "r") as file:
         config = yaml.safe_load(file)
+    
+    config["model"]["prior_kernel"]["params"]["a"] = args.prior_a
+    config["model"]["prior_kernel"]["params"]["l"] = args.prior_l
+    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l}"
 
     num_gpus = 0
     if torch.cuda.is_available():
@@ -200,12 +209,23 @@ if __name__ == "__main__":
         logger=wandb_logger
     )
 
-    if config["action"] == "train":
-        model = LightningModule(config)
-        trainer.fit(model, train_loader, val_loader)
-    else:
+    if config["action"] == "test":
         model = LightningModule.load_from_checkpoint(
         checkpoint_path=config["testing"]["checkpoint_path"],
         config=config)
 
         trainer.test(model, test_loader)
+    else:
+        model = LightningModule(config)
+        trainer.fit(model, train_loader, val_loader)
+
+        if config["action"] != "train":
+            # train and test
+            model = LightningModule.load_from_checkpoint(
+            checkpoint_path=glob.glob(os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]) + "/*.ckpt")[0],
+            config=config)
+
+            trainer.test(model, test_loader)
+
+            if config["logging"]["delete_on_completion"]:
+                shutil.rmtree(os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]))
