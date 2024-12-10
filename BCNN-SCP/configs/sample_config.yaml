@@ -68,6 +68,6 @@ logging:
   save_name: "BCNN_MNIST"
   checkpoint_dir: "../checkpoints" # Directory to save model checkpoints
   save_top_k: 1 # Number of best models to save
-  monitor_metric: "val_loss" # Metric to monitor for saving the best model
-  mode: "min" # "max" for maximizing the metric, "min" for minimizing
+  monitor_metric: "val_acc" # Metric to monitor for saving the best model
+  mode: "max" # "max" for maximizing the metric, "min" for minimizing
   delete_on_completion: true
