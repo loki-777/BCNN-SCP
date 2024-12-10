@@ -137,7 +137,7 @@ class LightningModule(pl.LightningModule):
         self.eval()  # Ensure the model is in evaluation mode
         with torch.no_grad():  # Disable gradient computation
             if not isinstance(x, torch.Tensor):
-                x = torch.tensor(x, dtype=torch.float32)  # Convert input to tensor if needed
+                x = torch.tensor(x, dtype=torch.float)  # Convert input to tensor if needed
             if x.ndim == 1:
                 x = x.unsqueeze(0)  # Add batch dimension for single data point
             probabilities = self(x)["logits"].softmax(dim=-1).squeeze()

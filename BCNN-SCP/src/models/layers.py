@@ -37,7 +37,7 @@ class BBBConv2d(pl.LightningModule):
         elif prior_kernel["name"] == "Matern":
             self.prior_kernel = MaternKernel(**prior_kernel["params"])
         elif prior_kernel["name"] == "RQ":
-            self.prior_kernel = RationalQuadraticKernel(**prior_kernel["params"])
+            self.prior_kernel = RQKernel(**prior_kernel["params"])
         else:
             raise NotImplementedError
 
@@ -52,6 +52,7 @@ class BBBConv2d(pl.LightningModule):
         # Setting up variational posteriors
         if kernel is None:
             self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size))) # learnable
+            self.posterior_kernel = IndependentKernel(self.a)
         if kernel["name"] == "Independent":
             self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size), **kernel["params_init"]["a"])) # learnable
             self.posterior_kernel = IndependentKernel(self.a)
@@ -68,7 +69,7 @@ class BBBConv2d(pl.LightningModule):
             self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
             self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
             self.alpha = self.prior_kernel.alpha # use prior
-            self.posterior_kernel = RationalQuadraticKernel(self.a, self.l, self.alpha)
+            self.posterior_kernel = RQKernel(self.a, self.l, self.alpha)
         else:
             raise NotImplementedError
 
