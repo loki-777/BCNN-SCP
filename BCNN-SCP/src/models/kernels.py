@@ -18,8 +18,8 @@ class IndependentKernel:
 
 class SpatialKernel:
     def __call__(self, h, w, device=None):
-        ys = torch.arange(h, device=device)
-        xs = torch.arange(w, device=device)
+        ys = torch.arange(h, dtype=torch.float, device=device)
+        xs = torch.arange(w, dtype=torch.float, device=device)
         points = torch.cartesian_prod(ys, xs)
 
         squared_norms = torch.sum(points**2, dim=1) # p_i.T @ p_i
