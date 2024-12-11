@@ -6,8 +6,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 
 import torch.nn as nn
-from torchmetrics import Accuracy, Precision, Recall, F1Score
-from torchmetrics.classification import MulticlassCalibrationError
+from torchmetrics import Accuracy, Precision, Recall, F1Score, CalibrationError
 import torch.optim as optim
 import wandb
 
@@ -29,7 +28,7 @@ class LightningModule(pl.LightningModule):
         self.precision_metric = Precision(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.recall_metric = Recall(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.f1_metric = F1Score(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
-        self.ece_metric = MulticlassCalibrationError(num_classes=config["data"]["num_classes"], norm='l1')
+        self.ece_metric = CalibrationError(num_classes=config["data"]["num_classes"], norm='l1', task="multiclass")
         self.loss_module = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, imgs):
@@ -51,37 +50,38 @@ class LightningModule(pl.LightningModule):
         # "batch" is the output of the training data loader.
         imgs, labels = batch
         preds = self.model(imgs)
-        logits = preds["logits"]
-        logits_copy = logits.clone()
+        logits = preds["logits"] # (..., C)
         kl_loss = preds["kl_loss"]
 
-        if logits_copy.dim() == 3:
-            logits_copy = logits_copy.softmax(dim=-1) # (batch_size, num_samples, num_classes)
-            logits_copy = logits_copy.mean(dim=1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes)
+        # Get probabilities
+        probs = logits.softmax(dim=-1) # (..., C)
 
-        logits_copy_argmax = logits_copy.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
+        # If sampling, average over samples
+        if probs.dim() == 3:
+            probs = probs.mean(dim=1) # (B, S, C) -> (B, C)
 
+        # Log training metrics
         if "accuracy" in self.config["training"]["metrics"]:
-            self.log("train_accuracy", self.accuracy_metric(logits_copy_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_accuracy", self.accuracy_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "precision" in self.config["training"]["metrics"]:
-            self.log("train_precision", self.precision_metric(logits_copy_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_precision", self.precision_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "recall" in self.config["training"]["metrics"]:
-            self.log("train_recall", self.recall_metric(logits_copy_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_recall", self.recall_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "f1" in self.config["training"]["metrics"]:
-            self.log("train_f1", self.f1_metric(logits_copy_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_f1", self.f1_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "ece" in self.config["training"]["metrics"]:
-            self.log("train_ece", self.ece_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_ece", self.ece_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
 
-
-        # (batch_size, num_samples, num_classes)
+        # If sampling, compute loss for each sample and average
+        # (B, S, C)
         if logits.dim() == 3:
-            logits = logits.permute(0, 2, 1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes, num_samples)
-            labels = labels.unsqueeze(-1) # (batch_size, ) -> (batch_size, 1)
-            labels = labels.expand(-1, logits.shape[-1]) # (batch_size, 1) -> (batch_size, num_samples)
-            criterion_loss = self.loss_module(logits, labels) # (batch_size, num_samples)
+            logits = logits.permute(0, 2, 1) # (B, S, C) -> (B, C, S)
+            labels = labels.unsqueeze(-1) # (B, ) -> (B, 1)
+            labels = labels.expand(-1, logits.shape[-1]) # (B, 1) -> (B, S)
+            criterion_loss = self.loss_module(logits, labels) # (B, S)
             criterion_loss = criterion_loss.mean(-1) # average over samples
             criterion_loss = criterion_loss.sum() # sum over minibatch
-        # (batch_size, num_classes)
+        # (B, C)
         else:
             criterion_loss = self.loss_module(logits, labels).sum()
 
@@ -98,47 +98,49 @@ class LightningModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         imgs, labels = batch
-        preds = self.model(imgs)["logits"]
+        logits = self.model(imgs)["logits"] # (..., C)
 
-        # (batch_size, num_samples, num_classes)
-        if preds.dim() == 3:
-            preds = preds.softmax(dim=-1) # (batch_size, num_samples, num_classes)
-            preds = preds.mean(dim=1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes)
+        # Get probabilities
+        probs = logits.softmax(dim=-1) # (..., C)
 
-        preds_argmax = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
+        # If sampling, average over samples
+        if probs.dim() == 3:
+            probs = probs.mean(dim=1) # (B, S, C) -> (B, C)
 
+        # Log validation metrics
         if "accuracy" in self.config["validation"]["metrics"]:
-            self.log("val_accuracy", self.accuracy_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_accuracy", self.accuracy_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "precision" in self.config["validation"]["metrics"]:
-            self.log("val_precision", self.precision_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_precision", self.precision_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "recall" in self.config["validation"]["metrics"]:
-            self.log("val_recall", self.recall_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_recall", self.recall_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "f1" in self.config["validation"]["metrics"]:
-            self.log("val_f1", self.f1_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_f1", self.f1_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "ece" in self.config["validation"]["metrics"]:
-            self.log("val_ece", self.ece_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_ece", self.ece_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
         # assumes 1 batch size
         imgs, labels = batch
-        preds = self.model(imgs)["logits"]
+        logits = self.model(imgs)["logits"] # (..., C)
 
-        # (batch_size, num_samples, num_classes)
-        if preds.dim() == 3:
-            preds = preds.softmax(dim=-1) # (batch_size, num_samples, num_classes)
-            preds = preds.mean(dim=1)
-        preds_argmax = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
+        # Get probabilities
+        probs = logits.softmax(dim=-1) # (..., C)
+
+        # If sampling, average over samples
+        if probs.dim() == 3:
+            probs = probs.mean(dim=1) # (B, S, C) -> (B, C)
 
         if "accuracy" in self.config["testing"]["metrics"]:
-            self.log("test_accuracy", self.accuracy_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_accuracy", self.accuracy_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "precision" in self.config["testing"]["metrics"]:
-            self.log("test_precicsion", self.precision_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_precicsion", self.precision_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "recall" in self.config["testing"]["metrics"]:
-            self.log("test_recall", self.recall_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_recall", self.recall_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "f1" in self.config["testing"]["metrics"]:
-            self.log("test_f1", self.f1_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_f1", self.f1_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "ece" in self.config["testing"]["metrics"]:
-            self.log("test_ece", self.ece_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_ece", self.ece_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
 
     def predict_single(self, x):
         self.eval()  # Ensure the model is in evaluation mode
@@ -147,8 +149,8 @@ class LightningModule(pl.LightningModule):
                 x = torch.tensor(x, dtype=torch.float)  # Convert input to tensor if needed
             if x.ndim == 1:
                 x = x.unsqueeze(0)  # Add batch dimension for single data point
-            probabilities = self(x)["logits"].softmax(dim=-1).squeeze()
-            return probabilities
+            probs = self(x)["logits"].softmax(dim=-1).squeeze()
+            return probs
 
 
 
@@ -174,7 +176,7 @@ if __name__ == "__main__":
 
     with open(args.file_path, "r") as file:
         config = yaml.safe_load(file)
-    
+
     config["model"]["prior_kernel"]["params"]["a"] = args.prior_a
     config["model"]["prior_kernel"]["params"]["l"] = args.prior_l
     config["model"]["prior_kernel"]["name"] = args.prior_k

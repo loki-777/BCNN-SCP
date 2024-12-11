@@ -2,7 +2,7 @@
 
 # for WandB logging
 project_name: "BCNN-SCP"
-experiment_name: "BCNN RBF(100, 0.1) U(0.1,0.3)"
+experiment_name: "BCNN RBF(1, 1)"
 device: "cpu" # if gpu, then all available GPUs are used
 action: "train" # action can be "train" or "test" or "train and test"
 
@@ -24,12 +24,12 @@ model:
   filter_size_conv1: 3 # Filter size for the first convolutional layer
   filter_size_conv2: 3 # Filter size for the second convolutional layer
   num_samples_training: 5 # Number of samples for training, null for mean weights
-  num_samples_predict: 5 # Number of samples for prediction, null for mean weights
+  num_samples_predict: 30 # Number of samples for prediction, null for mean weights
   prior_kernel:
     name: "RBF" # Kernel name (e.g., RBF, Matern, RQ, Independent)
     params:
-      a: 100
-      l: 0.1
+      a: 1
+      l: 1
   kernel:
     name: "RBF" # Kernel name (e.g., RBF, Matern, RQ, Independent)
     params_init: # Interval for uniform initialization
@@ -38,7 +38,7 @@ model:
 
 # Training settings
 training:
-  epochs: 20 # Number of training epochs
+  epochs: 10 # Number of training epochs
   optimizer: "Adam" # Optimizer (e.g., Adam, SGD)
   learning_rate: 0.001 # Learning rate
   weight_decay: 0.0 # Weight decay (L2 regularization)
@@ -48,11 +48,11 @@ training:
 
 # Validation settings
 validation:
-  metrics: ["accuracy", "f1"] # Validation metrics to log
+  metrics: ["accuracy", "ece", "f1"] # Validation metrics to log
 
 # Testing settings
 testing:
-  metrics: ["accuracy", "f1"] # Metrics for testing
+  metrics: ["accuracy", "ece", "f1"] # Metrics for testing
   checkpoint_path: "../checkpoints/"
 
 # Logging settings
