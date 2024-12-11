@@ -1,4 +1,3 @@
-
 import sys, os, glob, shutil
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
@@ -8,7 +7,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 import torch.nn as nn
 from torchmetrics import Accuracy, Precision, Recall, F1Score
-from torchmetrics.classification import CalibrationError
+from torchmetrics.classification import MulticlassCalibrationError
 import torch.optim as optim
 import wandb
 
@@ -30,7 +29,7 @@ class LightningModule(pl.LightningModule):
         self.precision_metric = Precision(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.recall_metric = Recall(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.f1_metric = F1Score(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
-        self.ece_metric = CalibrationError(n_bins=2, norm='l1')
+        self.ece_metric = MulticlassCalibrationError(n_bins=config["data"]["num_classes"], norm='l1')
         self.loss_module = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, imgs):
@@ -165,6 +164,7 @@ if __name__ == "__main__":
     # Optional arguments for prior_a and prior_l
     parser.add_argument("-a", "--prior_a", type=float, help="outputscale", required=False, default=100.0)
     parser.add_argument("-l", "--prior_l", type=float, help="lengthscale", required=False, default=1.0)
+    parser.add_argument("-k", "--prior_k", type=str, help="kernel", required=False, default="RBF")
 
     args = parser.parse_args()
 
@@ -177,7 +177,11 @@ if __name__ == "__main__":
     
     config["model"]["prior_kernel"]["params"]["a"] = args.prior_a
     config["model"]["prior_kernel"]["params"]["l"] = args.prior_l
-    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l}"
+    config["model"]["prior_kernel"]["name"] = args.prior_k
+    config["model"]["kernel"]["name"] = args.prior_k
+
+    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l} k={args.prior_k}"
+    config["logging"]["save_name"] = config["experiment_name"]
 
     num_gpus = 0
     if torch.cuda.is_available():
@@ -211,8 +215,8 @@ if __name__ == "__main__":
         callbacks=[
             ModelCheckpoint(
                 dirpath=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),
-                save_weights_only=True, mode="max", monitor=config["logging"]["monitor_metric"],
-            ),  # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
+                save_weights_only=True, save_last=True, save_top_k=0
+            ),
             LearningRateMonitor("epoch"),
         ],
         logger=wandb_logger
@@ -222,19 +226,17 @@ if __name__ == "__main__":
         model = LightningModule.load_from_checkpoint(
         checkpoint_path=config["testing"]["checkpoint_path"],
         config=config)
-
         trainer.test(model, test_loader)
     else:
         model = LightningModule(config)
-        trainer.fit(model, train_loader, val_loader)
+        try:
+            trainer.fit(model, train_loader, val_loader)
+        except Exception as e:
+            print("DNC")
 
         if config["action"] != "train":
             # train and test
-            model = LightningModule.load_from_checkpoint(
-            checkpoint_path=glob.glob(os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]) + "/*.ckpt")[0],
-            config=config)
-
+            # model = LightningModule.load_from_checkpoint(
+            # checkpoint_path=glob.glob(os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]) + "/*.ckpt")[0],
+            # config=config)
             trainer.test(model, test_loader)
-
-            if config["logging"]["delete_on_completion"]:
-                shutil.rmtree(os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]))
