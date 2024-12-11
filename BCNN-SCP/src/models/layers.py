@@ -10,7 +10,7 @@ def uniform(size, min=0.1, max=0.3):
     return min + (max - min) * torch.rand(size)
 
 class BBBConv2d(pl.LightningModule):
-    def __init__(self, in_channels, out_channels, filter_size=3, stride=1, padding=1, dilation=1,
+    def __init__(self, in_channels, out_channels, filter_size=4, stride=2, padding=1, dilation=1,
                  prior_kernel=None, kernel=None):
 
         super(BBBConv2d, self).__init__()

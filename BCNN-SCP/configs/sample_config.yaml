@@ -1,7 +1,7 @@
 # General settings
 
 # for WandB logging
-project_name: "BCNN-SCP"
+project_name: "Pneumonia Detection"
 experiment_name: "BCNN RBF(1, 1)"
 device: "cpu" # if gpu, then all available GPUs are used
 action: "train" # action can be "train" or "test" or "train and test"
@@ -13,7 +13,7 @@ data:
   batch_size: 32 # Batch size for training
   val_batch_size: 64 # Batch size for validation/testing
   num_workers: 0 # Number of data loader workers
-  input_size: [28, 28] # Image dimensions (height, width)
+  input_size: [224, 224] # Image dimensions (height, width)
   normalize_mean: 0.5 # Mean for normalization
   normalize_std: 0.5 # Standard deviation for normalization
 
@@ -22,8 +22,10 @@ model:
   model_name: "BCNN"
   out_channels_conv1: 16 # Number of output channels for the first convolutional layer
   out_channels_conv2: 32 # Number of output channels for the second convolutional layer
-  filter_size_conv1: 3 # Filter size for the first convolutional layer
-  filter_size_conv2: 3 # Filter size for the second convolutional layer
+  out_channels_conv3: 32 # Number of output channels for the second convolutional layer
+  filter_size_conv1: 4 # Filter size for the first convolutional layer
+  filter_size_conv2: 4 # Filter size for the second convolutional layer
+  filter_size_conv3: 4 # Filter size for the second convolutional layer
   num_samples_training: 5 # Number of samples for training, null for mean weights
   num_samples_predict: 30 # Number of samples for prediction, null for mean weights
   prior_kernel:
