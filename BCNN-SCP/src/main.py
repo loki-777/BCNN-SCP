@@ -29,7 +29,7 @@ class LightningModule(pl.LightningModule):
         self.precision_metric = Precision(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.recall_metric = Recall(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.f1_metric = F1Score(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
-        self.ece_metric = MulticlassCalibrationError(n_bins=config["data"]["num_classes"], norm='l1')
+        self.ece_metric = MulticlassCalibrationError(num_classes=config["data"]["num_classes"], norm='l1')
         self.loss_module = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, imgs):
