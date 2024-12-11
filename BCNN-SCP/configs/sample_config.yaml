@@ -2,7 +2,7 @@
 
 # for WandB logging
 project_name: "BCNN-SCP"
-experiment_name: "BCNN RBF(100, 1)"
+experiment_name: "BCNN RBF(100, 0.1) U(0.1,0.3)"
 device: "cpu" # if gpu, then all available GPUs are used
 action: "train" # action can be "train" or "test" or "train and test"
 
@@ -29,20 +29,12 @@ model:
     name: "RBF" # Kernel name (e.g., RBF, Matern, RQ, Independent)
     params:
       a: 100
-      l: 1
+      l: 0.1
   kernel:
     name: "RBF" # Kernel name (e.g., RBF, Matern, RQ, Independent)
-    params_init: # Parameters for lognormal
-      a:
-        mu: 0
-        sigma: 0.5
-        min: 0.1
-        max: 3
-      l:
-        mu: 0
-        sigma: 0.5
-        min: 0.1
-        max: 3
+    params_init: # Interval for uniform initialization
+      a: [0.1, 0.3]
+      l: [0.1, 0.3]
 
 # Training settings
 training:

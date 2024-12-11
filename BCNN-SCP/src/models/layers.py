@@ -6,11 +6,8 @@ from src.models.kernels import *
 from src.models.losses import *
 
 # For parameter initialization
-def log_normal(size, mu=0, sigma=0.5, min=0.1, max=3):
-    z = torch.randn(size)
-    x = torch.exp(mu + sigma * z)
-    x = x.clamp(min, max)
-    return x
+def uniform(size, min=0.1, max=0.3):
+    return min + (max - min) * torch.rand(size)
 
 class BBBConv2d(pl.LightningModule):
     def __init__(self, in_channels, out_channels, filter_size=3, stride=1, padding=1, dilation=1,
@@ -51,23 +48,23 @@ class BBBConv2d(pl.LightningModule):
 
         # Setting up variational posteriors
         if kernel is None:
-            self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size))) # learnable
+            self.a = nn.Parameter(uniform((self.filter_num, self.filter_size))) # learnable
             self.posterior_kernel = IndependentKernel(self.a)
         elif kernel["name"] == "Independent":
-            self.a = nn.Parameter(log_normal((self.filter_num, self.filter_size), **kernel["params_init"]["a"])) # learnable
+            self.a = nn.Parameter(uniform((self.filter_num, self.filter_size), *kernel["params_init"]["a"])) # learnable
             self.posterior_kernel = IndependentKernel(self.a)
         elif kernel["name"] == "RBF":
-            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
-            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.a = nn.Parameter(uniform(self.filter_num, *kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(uniform(self.filter_num, *kernel["params_init"]["l"])) # learnable
             self.posterior_kernel = RBFKernel(self.a, self.l)
         elif kernel["name"] == "Matern":
-            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
-            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.a = nn.Parameter(uniform(self.filter_num, *kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(uniform(self.filter_num, *kernel["params_init"]["l"])) # learnable
             self.nu = self.prior_kernel.nu # use prior
             self.posterior_kernel = MaternKernel(self.a, self.l, self.nu)
         elif kernel["name"] == "RQ":
-            self.a = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["a"])) # learnable
-            self.l = nn.Parameter(log_normal(self.filter_num, **kernel["params_init"]["l"])) # learnable
+            self.a = nn.Parameter(uniform(self.filter_num, *kernel["params_init"]["a"])) # learnable
+            self.l = nn.Parameter(uniform(self.filter_num, *kernel["params_init"]["l"])) # learnable
             self.alpha = self.prior_kernel.alpha # use prior
             self.posterior_kernel = RQKernel(self.a, self.l, self.alpha)
         else:
