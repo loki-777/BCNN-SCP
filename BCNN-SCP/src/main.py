@@ -232,7 +232,7 @@ if __name__ == "__main__":
         try:
             trainer.fit(model, train_loader, val_loader)
         except Exception as e:
-            print("DNC")
+            print("*************************************DNC*************************************")
 
         if config["action"] != "train":
             # train and test
