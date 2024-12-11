@@ -231,10 +231,10 @@ if __name__ == "__main__":
         trainer.test(model, test_loader)
     else:
         model = LightningModule(config)
-        try:
-            trainer.fit(model, train_loader, val_loader)
-        except Exception as e:
-            print("*************************************DNC*************************************")
+
+        # "DNC" cases will break out automatically without running test
+        # exceptions are logged in wandb logs
+        trainer.fit(model, train_loader, val_loader)
 
         if config["action"] != "train":
             # train and test
