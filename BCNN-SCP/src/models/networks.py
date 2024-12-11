@@ -6,17 +6,20 @@ from src.models.layers import *
 
 class BCNN(pl.LightningModule):
     def __init__(self,
-                 out_channels_conv1=16, out_channels_conv2=32,
-                 filter_size_conv1=3, filter_size_conv2=3,
+                 out_channels_conv1=16, out_channels_conv2=32, out_channels_conv3=32,
+                 filter_size_conv1=4, filter_size_conv2=4, filter_size_conv3=4,
                  num_samples_training=None, num_samples_predict=None,
                  prior_kernel=None, kernel=None):
         super(BCNN, self).__init__()
 
         self.conv1 = BBBConv2d(1, out_channels_conv1,
-                               filter_size=filter_size_conv1, padding=filter_size_conv1//2,
+                               filter_size=filter_size_conv1, padding=1,
                                prior_kernel=prior_kernel, kernel=kernel)
         self.conv2 = BBBConv2d(out_channels_conv1, out_channels_conv2,
-                               filter_size=filter_size_conv2, padding=filter_size_conv2//2,
+                               filter_size=filter_size_conv2, padding=1,
+                               prior_kernel=prior_kernel, kernel=kernel)
+        self.conv3 = BBBConv2d(out_channels_conv2, out_channels_conv3,
+                               filter_size=filter_size_conv3, padding=1,
                                prior_kernel=prior_kernel, kernel=kernel)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.fc1 = nn.Linear(out_channels_conv2 * 14 * 14, 128)
