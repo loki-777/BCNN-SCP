@@ -10,7 +10,8 @@ action: "train" # action can be "train" or "test" or "train and test"
 data:
   dataset: "MNIST"
   num_classes: 10
-  batch_size: 32 # Batch size for training/validation
+  batch_size: 32 # Batch size for training
+  val_batch_size: 64 # Batch size for validation/testing
   num_workers: 0 # Number of data loader workers
   input_size: [28, 28] # Image dimensions (height, width)
   normalize_mean: 0.5 # Mean for normalization

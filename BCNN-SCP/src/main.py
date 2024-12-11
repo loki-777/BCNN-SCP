@@ -176,9 +176,10 @@ if __name__ == "__main__":
     )
 
     # Optional arguments for prior_a and prior_l
-    parser.add_argument("-a", "--prior_a", type=float, help="outputscale", required=False, default=100.0)
-    parser.add_argument("-l", "--prior_l", type=float, help="lengthscale", required=False, default=1.0)
-    parser.add_argument("-k", "--prior_k", type=str, help="kernel", required=False, default="RBF")
+    parser.add_argument("-a", "--prior_a", type=float, help="outputscale", required=False, default=None)
+    parser.add_argument("-l", "--prior_l", type=float, help="lengthscale", required=False, default=None)
+    parser.add_argument("-k1", "--prior_k1", type=str, help="prior kernel", required=False, default=None)
+    parser.add_argument("-k2", "--prior_k2", type=str, help="kernel", required=False, default=None)
 
     args = parser.parse_args()
 
@@ -189,12 +190,17 @@ if __name__ == "__main__":
     with open(args.file_path, "r") as file:
         config = yaml.safe_load(file)
 
-    config["model"]["prior_kernel"]["params"]["a"] = args.prior_a
-    config["model"]["prior_kernel"]["params"]["l"] = args.prior_l
-    config["model"]["prior_kernel"]["name"] = args.prior_k
-    config["model"]["kernel"]["name"] = args.prior_k
+    # Update config with optional arguments
+    if args.prior_a is not None:
+        config["model"]["prior_kernel"]["params"]["a"] = args.prior_a
+    if args.prior_l is not None:
+        config["model"]["prior_kernel"]["params"]["l"] = args.prior_l
+    if args.prior_k1 is not None:
+        config["model"]["prior_kernel"]["name"] = args.prior_k1
+    if args.prior_k2 is not None:
+        config["model"]["kernel"]["name"] = args.prior_k2
 
-    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l} k={args.prior_k}"
+    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l} k1={args.prior_k1} k2={args.prior_k2}"
     config["logging"]["save_name"] = config["experiment_name"]
 
     num_gpus = 0
@@ -226,6 +232,7 @@ if __name__ == "__main__":
         devices=num_gpus if use_gpu else "auto",
         # How many epochs to train for if no patience is set
         max_epochs=config["training"]["epochs"],
+        val_check_interval=0.25, # Check validation 4 times
         callbacks=[
             ModelCheckpoint(
                 dirpath=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),

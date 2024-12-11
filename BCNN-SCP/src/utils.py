@@ -40,8 +40,9 @@ def get_dataloaders(config):
 
         # Create dataloaders
         batch_size = config["data"]["batch_size"]
+        val_batch_size = config["data"]["val_batch_size"]
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=config["data"]["num_workers"])
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=config["data"]["num_workers"])
-        test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=config["data"]["num_workers"])
+        val_loader = DataLoader(val_dataset, batch_size=val_batch_size, shuffle=False, num_workers=config["data"]["num_workers"])
+        test_loader = DataLoader(test_dataset, batch_size=val_batch_size, shuffle=False, num_workers=config["data"]["num_workers"])
 
         return train_loader, val_loader, test_loader
