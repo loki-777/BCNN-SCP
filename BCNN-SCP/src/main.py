@@ -201,7 +201,6 @@ if __name__ == "__main__":
         config["model"]["kernel"]["name"] = args.prior_k2
 
     config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l} k1={args.prior_k1} k2={args.prior_k2}"
-    config["logging"]["save_name"] = config["experiment_name"]
 
     num_gpus = 0
     if torch.cuda.is_available():
@@ -226,7 +225,7 @@ if __name__ == "__main__":
     wandb_logger.experiment.config.update(config)
 
     trainer = pl.Trainer(
-        default_root_dir=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),  # Where to save models
+        default_root_dir=os.path.join(config["logging"]["checkpoint_dir"], config["experiment_name"]),  # Where to save models
         # We run on a single GPU (if possible)
         accelerator=config["device"],
         devices=num_gpus if use_gpu else "auto",
@@ -235,7 +234,7 @@ if __name__ == "__main__":
         val_check_interval=0.25, # Check validation 4 times
         callbacks=[
             ModelCheckpoint(
-                dirpath=os.path.join(config["logging"]["checkpoint_dir"], config["logging"]["save_name"]),
+                dirpath=os.path.join(config["logging"]["checkpoint_dir"], config["experiment_name"]),
                 save_weights_only=True, save_last=True, save_top_k=0
             ),
             LearningRateMonitor("epoch"),
@@ -245,7 +244,7 @@ if __name__ == "__main__":
 
     if config["action"] == "test":
         model = LightningModule.load_from_checkpoint(
-        checkpoint_path=config["testing"]["checkpoint_path"],
+        checkpoint_path=os.path.join(config["logging"]["checkpoint_dir"], config["experiment_name"], "last.ckpt"),
         config=config)
         trainer.test(model, test_loader)
     else:

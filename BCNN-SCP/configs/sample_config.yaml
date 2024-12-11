@@ -54,13 +54,10 @@ validation:
 # Testing settings
 testing:
   metrics: ["accuracy", "ece", "f1"] # Metrics for testing
-  checkpoint_path: "../checkpoints/"
 
 # Logging settings
 logging:
-  save_name: "BCNN_MNIST"
   checkpoint_dir: "../checkpoints" # Directory to save model checkpoints
   save_top_k: 1 # Number of best models to save
   monitor_metric: "val_accuracy" # Metric to monitor for saving the best model
   mode: "max" # "max" for maximizing the metric, "min" for minimizing
-  delete_on_completion: true
