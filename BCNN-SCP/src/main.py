@@ -8,6 +8,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 import torch.nn as nn
 from torchmetrics import Accuracy, Precision, Recall, F1Score
+from torchmetrics.classification import CalibrationError
 import torch.optim as optim
 import wandb
 
@@ -29,6 +30,7 @@ class LightningModule(pl.LightningModule):
         self.precision_metric = Precision(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.recall_metric = Recall(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
         self.f1_metric = F1Score(num_classes=config["data"]["num_classes"], average='macro', task="multiclass")
+        self.ece_metric = CalibrationError(n_bins=2, norm='l1')
         self.loss_module = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, imgs):
@@ -58,16 +60,18 @@ class LightningModule(pl.LightningModule):
             logits_copy = logits_copy.softmax(dim=-1) # (batch_size, num_samples, num_classes)
             logits_copy = logits_copy.mean(dim=1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes)
 
-        logits_copy = logits_copy.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
+        logits_copy_argmax = logits_copy.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
 
         if "accuracy" in self.config["training"]["metrics"]:
-            self.log("train_accuracy", self.accuracy_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_accuracy", self.accuracy_metric(logits_copy_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "precision" in self.config["training"]["metrics"]:
-            self.log("train_precision", self.precision_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_precision", self.precision_metric(logits_copy_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "recall" in self.config["training"]["metrics"]:
-            self.log("train_recall", self.recall_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_recall", self.recall_metric(logits_copy_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "f1" in self.config["training"]["metrics"]:
-            self.log("train_f1", self.f1_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("train_f1", self.f1_metric(logits_copy_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "ece" in self.config["training"]["metrics"]:
+            self.log("train_ece", self.ece_metric(logits_copy, labels), sync_dist=True, on_step=False, on_epoch=True)
 
 
         # (batch_size, num_samples, num_classes)
@@ -102,16 +106,18 @@ class LightningModule(pl.LightningModule):
             preds = preds.softmax(dim=-1) # (batch_size, num_samples, num_classes)
             preds = preds.mean(dim=1) # (batch_size, num_samples, num_classes) -> (batch_size, num_classes)
 
-        preds = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
+        preds_argmax = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
 
         if "accuracy" in self.config["validation"]["metrics"]:
-            self.log("val_accuracy", self.accuracy_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_accuracy", self.accuracy_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "precision" in self.config["validation"]["metrics"]:
-            self.log("val_precision", self.precision_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_precision", self.precision_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "recall" in self.config["validation"]["metrics"]:
-            self.log("val_recall", self.recall_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_recall", self.recall_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "f1" in self.config["validation"]["metrics"]:
-            self.log("val_f1", self.f1_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("val_f1", self.f1_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "ece" in self.config["validation"]["metrics"]:
+            self.log("val_ece", self.ece_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
         # assumes 1 batch size
@@ -122,16 +128,18 @@ class LightningModule(pl.LightningModule):
         if preds.dim() == 3:
             preds = preds.softmax(dim=-1) # (batch_size, num_samples, num_classes)
             preds = preds.mean(dim=1)
-        preds = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
+        preds_argmax = preds.argmax(dim=-1) # (batch_size, num_classes) -> (batch_size, )
 
         if "accuracy" in self.config["testing"]["metrics"]:
-            self.log("test_accuracy", self.accuracy_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_accuracy", self.accuracy_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "precision" in self.config["testing"]["metrics"]:
-            self.log("test_precicsion", self.precision_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_precicsion", self.precision_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "recall" in self.config["testing"]["metrics"]:
-            self.log("test_recall", self.recall_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_recall", self.recall_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
         if "f1" in self.config["testing"]["metrics"]:
-            self.log("test_f1", self.f1_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
+            self.log("test_f1", self.f1_metric(preds_argmax, labels), sync_dist=True, on_step=False, on_epoch=True)
+        if "ece" in self.config["testing"]["metrics"]:
+            self.log("test_ece", self.ece_metric(preds, labels), sync_dist=True, on_step=False, on_epoch=True)
 
     def predict_single(self, x):
         self.eval()  # Ensure the model is in evaluation mode
@@ -180,10 +188,11 @@ if __name__ == "__main__":
 
     use_gpu = True if config["device"] == "gpu" else False
 
-    # prep data
-    train_loader, val_loader, test_loader = get_dataloaders(config)
 
     pl.seed_everything(42)
+
+    # prep data
+    train_loader, val_loader, test_loader = get_dataloaders(config)
 
     wandb_logger = WandbLogger(
         project=config["project_name"],
