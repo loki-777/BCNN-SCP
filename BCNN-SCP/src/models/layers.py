@@ -28,13 +28,13 @@ class BBBConv2d(pl.LightningModule):
         if prior_kernel is None:
             self.prior_kernel = IndependentKernel()
         elif prior_kernel["name"] == "Independent":
-            self.prior_kernel = IndependentKernel(**prior_kernel["params"])
+            self.prior_kernel = IndependentKernel(a=prior_kernel["params"].get("a"))
         elif prior_kernel["name"] == "RBF":
-            self.prior_kernel = RBFKernel(**prior_kernel["params"])
+            self.prior_kernel = RBFKernel(a=prior_kernel["params"].get("a"), l=prior_kernel["params"].get("l"))
         elif prior_kernel["name"] == "Matern":
-            self.prior_kernel = MaternKernel(**prior_kernel["params"])
+            self.prior_kernel = MaternKernel(a=prior_kernel["params"].get("a"), l=prior_kernel["params"].get("l"), nu=prior_kernel["params"].get("nu"))
         elif prior_kernel["name"] == "RQ":
-            self.prior_kernel = RQKernel(**prior_kernel["params"])
+            self.prior_kernel = RQKernel(a=prior_kernel["params"].get("a"), l=prior_kernel["params"].get("l"), alpha=prior_kernel["params"].get("alpha"))
         else:
             raise NotImplementedError
 
