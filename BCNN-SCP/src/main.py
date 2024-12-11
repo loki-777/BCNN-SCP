@@ -32,7 +32,9 @@ class LightningModule(pl.LightningModule):
         self.loss_module = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, imgs):
-        return self.model(imgs)
+        logits = self.model(imgs)["logits"] # (..., C)
+        probs = logits.softmax(dim=-1) # (..., C)
+        return probs
 
     def configure_optimizers(self):
         if self.config["training"]["optimizer"] == "Adam":
@@ -142,15 +144,25 @@ class LightningModule(pl.LightningModule):
         if "ece" in self.config["testing"]["metrics"]:
             self.log("test_ece", self.ece_metric(probs, labels), sync_dist=True, on_step=False, on_epoch=True)
 
-    def predict_single(self, x):
+    def predict(self, img):
+        # Ensure img is tensor
+        if not isinstance(img, torch.Tensor):
+            img = torch.tensor(img, dtype=torch.float) # (..., Ch, H, W)
+
+        # Ensure img has batch dimension
+        no_batch = (img.dim() == 3)
+        if no_batch:
+            img = img.unsqueeze(0) # (B, Ch, H, W)
+
         self.eval()  # Ensure the model is in evaluation mode
         with torch.no_grad():  # Disable gradient computation
-            if not isinstance(x, torch.Tensor):
-                x = torch.tensor(x, dtype=torch.float)  # Convert input to tensor if needed
-            if x.ndim == 1:
-                x = x.unsqueeze(0)  # Add batch dimension for single data point
-            probs = self(x)["logits"].softmax(dim=-1).squeeze()
-            return probs
+            probs = self.forward(img) # (B, ..., Cl)
+
+        # Remove batch dimension if it was not present
+        if no_batch:
+            probs = probs[0] # (..., Cl)
+
+        return probs
 
 
 
