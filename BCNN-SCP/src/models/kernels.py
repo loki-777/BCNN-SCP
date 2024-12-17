@@ -95,16 +95,19 @@ class RQKernel(SpatialKernel):
 
 
 if __name__ == "__main__":
+    # Increase font size
+    plt.rcParams.update({'font.size': 16})
+
     # Visualize RBF covariance
     h, w = 3, 3
     covar = RBFKernel(a=1, l=1)(h, w)
     covar_p1 = covar[0, :].reshape(h, w)
-    plt.imshow(covar_p1)
+    plt.imshow(covar_p1, cmap="Reds")
     plt.yticks(range(h))
     plt.xticks(range(w))
     plt.colorbar()
     plt.title("Spatial Covariance of $(0, 0)$")
-    plt.savefig("figures/covariance_example.pdf")
+    plt.savefig("../figures/covariance_example.pdf", bbox_inches="tight")
     plt.close()
 
     # Visualize RBF kernel
@@ -115,18 +118,18 @@ if __name__ == "__main__":
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
     plt.title("RBF Kernel")
-    plt.savefig("figures/rbf_kernel.pdf")
+    plt.savefig("../figures/rbf_kernel.pdf", bbox_inches="tight")
     plt.close()
 
     # Visualize Matern kernel
     diff = torch.linspace(-3, 3, 100)
-    for a, l, nu in [(1, 1, 1.5), (1, 2, 1.5), (2, 1, 1.5), (1, 1, 2.5)]:
+    for a, l, nu in [(1, 1, 0.5), (1, 2, 0.5), (2, 1, 0.5), (1, 1, 1.5)]:
         covars = MaternKernel(a=a, l=l, nu=nu).scaled_kernel(diff**2)
         plt.plot(diff, covars, label=f"Matérn$(a={a}, \\ell={l}, \\nu={nu})$")
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
     plt.title("Matérn Kernel")
-    plt.savefig("figures/matern_kernel.pdf")
+    plt.savefig("../figures/matern_kernel.pdf", bbox_inches="tight")
     plt.close()
 
     # Visualize RQ kernel
@@ -137,7 +140,7 @@ if __name__ == "__main__":
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
     plt.title("RQ Kernel")
-    plt.savefig("figures/rq_kernel.pdf")
+    plt.savefig("../figures/rq_kernel.pdf", bbox_inches="tight")
     plt.close()
 
     # Visualize different kernels
@@ -153,5 +156,5 @@ if __name__ == "__main__":
     plt.xlabel("$p_1 - p_2$")
     plt.legend()
     plt.title("Kernels")
-    plt.savefig("figures/kernels.pdf")
+    plt.savefig("../figures/kernels.pdf", bbox_inches="tight")
     plt.close()
