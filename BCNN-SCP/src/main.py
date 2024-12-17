@@ -200,10 +200,10 @@ if __name__ == "__main__":
         config["model"]["prior_kernel"]["name"] = args.prior_k1
     if args.prior_k2 is not None:
         config["model"]["kernel"]["name"] = args.prior_k2
-    if args.p is not None:
-        config["data"]["percent"] = args.p
+    if args.percentage is not None:
+        config["data"]["percent"] = args.percentage
 
-    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l} k1={args.prior_k1} k2={args.prior_k2} p={args.p}"
+    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l} k1={args.prior_k1} k2={args.prior_k2} p={args.percentage}"
 
     num_gpus = 0
     if torch.cuda.is_available():
