@@ -16,6 +16,7 @@ data:
   input_size: [224, 224] # Image dimensions (height, width)
   normalize_mean: 0.5 # Mean for normalization
   normalize_std: 0.5 # Standard deviation for normalization
+  percentage: 5
 
 # Model settings
 model:

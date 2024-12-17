@@ -180,6 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--prior_l", type=float, help="lengthscale", required=False, default=None)
     parser.add_argument("-k1", "--prior_k1", type=str, help="prior kernel", required=False, default=None)
     parser.add_argument("-k2", "--prior_k2", type=str, help="kernel", required=False, default=None)
+    parser.add_argument("-p", "--percentage", type=str, help="percentage", required=False, default=100)
 
     args = parser.parse_args()
 
@@ -199,8 +200,10 @@ if __name__ == "__main__":
         config["model"]["prior_kernel"]["name"] = args.prior_k1
     if args.prior_k2 is not None:
         config["model"]["kernel"]["name"] = args.prior_k2
+    if args.p is not None:
+        config["data"]["percent"] = args.p
 
-    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l} k1={args.prior_k1} k2={args.prior_k2}"
+    config["experiment_name"] = config["experiment_name"] + f" a={args.prior_a} l={args.prior_l} k1={args.prior_k1} k2={args.prior_k2} p={args.p}"
 
     num_gpus = 0
     if torch.cuda.is_available():
