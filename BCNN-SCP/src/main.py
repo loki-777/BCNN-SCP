@@ -180,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--prior_l", type=float, help="lengthscale", required=False, default=None)
     parser.add_argument("-k1", "--prior_k1", type=str, help="prior kernel", required=False, default=None)
     parser.add_argument("-k2", "--prior_k2", type=str, help="kernel", required=False, default=None)
-    parser.add_argument("-p", "--percentage", type=str, help="percentage", required=False, default=100)
+    parser.add_argument("-p", "--percentage", type=str, help="percentage", required=False, default=None)
 
     args = parser.parse_args()
 
