@@ -67,10 +67,10 @@ def get_dataloaders(config):
         test_dataset = datasets.MNIST(root='../data', train=False, transform=transform, download=True)
 
         # Split the training dataset into train and validation subsets
-        train_size = int(0.8 * len(dataset)) * (config["data"]["percent"] / 100)  # 80% for training
+        train_size = int(0.8 * len(dataset) * (config["data"]["percent"] / 100))  # 80% for training
         val_size = len(dataset) - train_size  # 20% for validation
-        unused_size = len(dataset) - train_dataset - val_size
-        
+        unused_size = len(dataset) - train_size - val_size
+
         train_dataset, val_dataset, _ = random_split(dataset, [train_size, val_size, unused_size])
 
         # Create dataloaders
